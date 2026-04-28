@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.koen.kopms_api.task.mdsett1.dao.Mdsett1Dao">
+	
+    <!--  권한신청 조회 페이징 -->
+    <select id="selectMdsett1ListP" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT m.NO, TO_CHAR(m.WST_DATE, 'YYYY-MM-DD HH24:MI:SS') AS WST_DATE
+        	 , m.WST_NUM, m.WST_NUM_SEQ, m.WST_SBN, e.NAME AS WST_SBN_NAME
+        	 , m.WST_NM, m.REC_YN, m.REC_YN_NM
+     		 , TO_CHAR(m.REC_DATE, 'YYYY-MM-DD HH24:MI:SS') AS REC_DATE, m.REG_SBN
+     		 , TO_CHAR(m.REG_DATE, 'YYYY-MM-DD HH24:MI:SS') AS REG_DATE, m.MAX_CNT
+		     , CEIL(m.MAX_CNT / #{pagePerRow} ) AS TOTAL_PAGE
+		FROM (
+		       SELECT ROW_NUMBER() OVER (ORDER BY WST_DATE DESC) AS NO
+		            , WST_DATE, WST_NUM, WST_NUM_SEQ, WST_SBN, WST_NM 
+		            , REC_YN
+		            , CASE WHEN REC_YN = 'Y' THEN '승인'
+		                   ELSE '미승인' END AS REC_YN_NM
+		            , REC_DATE, REG_SBN, REG_DATE
+		            , COUNT(*) OVER() AS MAX_CNT
+		         FROM MDSETT1
+		        WHERE 1 = 1
+			) m
+		LEFT JOIN EMPLOYEE e
+		       ON e.EMPNO = m.WST_SBN
+	   OFFSET (#{pageNum} - 1) * #{pagePerRow} ROWS
+		FETCH NEXT #{pagePerRow} ROWS ONLY        
+    </select>
+    
+    <select id="countByWstSbn" parameterType="string" resultType="int">
+	    SELECT COUNT(*)
+	      FROM MDSETT1
+	     WHERE WST_SBN = #{wstSbn}
+	</select>
+    
+    <!-- 권한신청 저장 : 평가위원 -->
+	<insert id="insertMdsett1" parameterType="HashMap">
+		INSERT INTO MDSETT1
+			 ( WST_DATE, WST_NUM, WST_NUM_SEQ, WST_SBN, WST_NM
+			 , REC_YN, REC_DATE, REG_SBN, REG_DATE			 
+			 )
+		VALUES
+			 ( SYSDATE, 0, 0, #{empno}, #{userGubun}
+			 , 'N', #{recDate}, #{regUser}, SYSDATE
+			 )
+	</insert>
+	
+    <!-- 조직정보  저장
+	<insert id="upsertDept" parameterType="HashMap">
+		MERGE INTO DEPT t
+		USING (
+		    SELECT
+		        #{deptno,     jdbcType=VARCHAR} AS DEPTNO,
+		        #{upCode,     jdbcType=VARCHAR} AS UP_CODE,
+		        #{deptName,   jdbcType=VARCHAR} AS DEPT_NAME,
+		        #{deptOrder,  jdbcType=VARCHAR} AS DEPT_ORDER,
+		        #{minlevelno, jdbcType=VARCHAR} AS MINLEVELNO,
+		        #{manager,    jdbcType=VARCHAR} AS MANAGER,
+		        #{hostname,   jdbcType=VARCHAR} AS HOSTNAME,
+		        #{aliasName,  jdbcType=VARCHAR} AS ALIAS_NAME,
+		        #{deptGubun,  jdbcType=VARCHAR} AS DEPT_GUBUN,
+		        #{branchYn,   jdbcType=VARCHAR} AS BRANCH_YN
+		    FROM dual
+		) s
+		ON (t.DEPTNO = s.DEPTNO)
+		
+		WHEN MATCHED THEN
+		    UPDATE SET
+		        t.UP_CODE     = s.UP_CODE,
+		        t.DEPT_NAME   = s.DEPT_NAME,
+		        t.DEPT_ORDER  = s.DEPT_ORDER,
+		        t.MINLEVELNO  = s.MINLEVELNO,
+		        t.MANAGER     = s.MANAGER,
+		        t.HOSTNAME    = s.HOSTNAME,
+		        t.ALIAS_NAME  = s.ALIAS_NAME,
+		        t.DEPT_GUBUN  = s.DEPT_GUBUN,
+		        t.BRANCH_YN   = s.BRANCH_YN
+		
+		WHEN NOT MATCHED THEN
+		    INSERT (
+		        DEPTNO,
+		        UP_CODE,
+		        DEPT_NAME,
+		        DEPT_ORDER,
+		        MINLEVELNO,
+		        MANAGER,
+		        HOSTNAME,
+		        ALIAS_NAME,
+		        DEPT_GUBUN,
+		        REG_DATE,
+		        BRANCH_YN
+		    )
+		    VALUES (
+		        s.DEPTNO,
+		        s.UP_CODE,
+		        s.DEPT_NAME,
+		        s.DEPT_ORDER,
+		        s.MINLEVELNO,
+		        s.MANAGER,
+		        s.HOSTNAME,
+		        s.ALIAS_NAME,
+		        s.DEPT_GUBUN,
+		        SYSDATE,
+		        s.BRANCH_YN
+		    )
+	</insert>
+    -->
+    
+</mapper>

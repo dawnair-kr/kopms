@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.koen.kopms_api.common.file.dao.FileDao">
+	
+	<!--  AttachSeq 조회 -->
+	<select id="selectAttachSeq" resultType="long">
+		SELECT ATTACH_SEQ.NEXTVAL AS ATTACH_SEQ
+		  FROM DUAL
+	</select>
+	
+	<!-- 조회 -->
+    <select id="selectFile" parameterType="HashMap" resultType="CamelHashMap">
+    	SELECT 'N' AS CHECKED, ROW_NUMBER() OVER (ORDER BY A.WRITE_DATE DESC, A.ATTACH_FILE_SEQ, A.ORDER_NO) AS NO
+    		 , A.ATTACH_FILE_SEQ, A.ORDER_NO, A.FILE_SEQ, A.FILE_NAME
+	   	 	 , A.USE_YN, A.FILE_GUBUN, REGEXP_SUBSTR(A.FILE_NAME, '[^.]+$') AS FILE_EXT
+	   	 	 , NVL(A.FILE_SIZE,0) AS FILE_SIZE, A.WRITER_ID, TO_CHAR(A.WRITE_DATE,'YYYY-MM-DD') AS WRITE_DATE, A.TITLE	   		 
+	   		 , A.MASTER_NO, A.TASK_TYPE, A.TASK_CODE
+	   		 , CASE WHEN A.TASK_TYPE='109' THEN '사내절차' ELSE CM.CODE_GROUP_NAME END TASK_TYPE_NAME
+	 		 , CMD.TASK_NAME	
+	 		 , EMP.NAME AS WR_NAME
+	 		 , A.WRITE_DATE AS WRITE_DT
+	   	 FROM BIZ_ATTACH_FILE A
+	   	 LEFT JOIN COME_CODE_GROUP CM ON A.TASK_TYPE=CM.CODE_GROUP
+  		 LEFT JOIN BIZ_TASK CMD ON A.TASK_TYPE = CMD.BIZ_TYPE AND A.TASK_CODE = CMD.TASK_CODE
+  		 LEFT OUTER JOIN EMPLOYEE EMP ON A.WRITER_ID=EMP.EMPNO 
+	    WHERE 1 = 1
+	      AND A.USE_YN = 'Y'
+	      <if test='attachFileSeq != null and attachFileSeq != ""'> 
+          AND A.ATTACH_FILE_SEQ = #{attachFileSeq}
+          </if>
+          <if test='orderNo != null and orderNo != ""'>
+          AND A.ORDER_NO = #{orderNo}
+          </if>
+          <if test='masterNo != null and masterNo != ""'>
+          AND A.MASTER_NO = #{masterNo}
+          </if>
+          <if test='taskType != null and taskType != ""'>
+          AND A.TASK_TYPE = #{taskType}
+          </if>
+          <if test='taskCode != null and taskCode != ""'>
+          AND A.TASK_CODE = #{taskCode}
+          </if>
+          <if test='fileGubun != null and fileGubun != ""'>
+          AND A.FILE_GUBUN = #{fileGubun}          
+          </if>
+		  <if test="arrFileGubun != null and arrFileGubun.size() > 0">
+		  AND A.FILE_GUBUN IN
+			    <foreach item="id" index="index" collection="arrFileGubun" open="(" separator="," close=")">
+			        #{id}
+			    </foreach>
+		  </if>
+          <if test='fileName != null and fileName != "" and (title == null or title == "")'>
+          AND UPPER(A.FILE_NAME) LIKE '%' || UPPER(#{fileName}) || '%'
+          </if>
+          <if test='title != null and title != "" and (fileName == null or fileName == "")'>
+          AND UPPER(A.TITLE) LIKE '%' || UPPER(#{title}) || '%'
+          </if>
+          <if test='title != null and title != "" and fileName != null and fileName != ""'>
+          AND ( UPPER(A.TITLE) LIKE '%' || UPPER(#{title}) || '%'
+             OR UPPER(A.FILE_NAME) LIKE '%' || UPPER(#{fileName}) || '%' )
+          </if>          
+          <!-- [리팩토링] CASE WHEN → choose/when 으로 교체
+               기존: CASE WHEN 방식은 두 조건이 항상 동시에 평가됨
+                     searchType='bizTitle'이면 FILE_NAME 조건이 LIKE '%' (전체 매칭)으로 남아
+                     의도치 않게 조건 없이 통과됨
+               변경: choose/when 으로 searchType 값에 따라 하나의 조건만 적용 -->
+          <if test='searchText != null and searchText != "" and searchType != null and searchType != ""'>
+          <choose>
+            <when test="searchType == 'bizTitle'">AND UPPER(A.TITLE)     LIKE '%' || UPPER(#{searchText}) || '%'</when>
+            <when test="searchType == 'bizFile'"> AND UPPER(A.FILE_NAME) LIKE '%' || UPPER(#{searchText}) || '%'</when>
+          </choose>
+          </if>
+          <if test='startDate != null and startDate != ""'>
+          AND TO_CHAR(A.WRITE_DATE,'YYYY-MM-DD') <![CDATA[>=]]> #{startDate}          
+          </if>
+          <if test='endDate != null and endDate != ""'>
+          AND TO_CHAR(A.WRITE_DATE,'YYYY-MM-DD') <![CDATA[<=]]> #{endDate}          
+          </if>
+
+    </select>
+    
+    <!-- 파일 저장 -->
+    <insert id="insertFile" parameterType="HashMap">
+		INSERT INTO BIZ_ATTACH_FILE
+			 ( ATTACH_FILE_SEQ
+			 , ORDER_NO
+			 , FILE_SEQ
+			 , FILE_NAME
+			 , MASTER_NO
+			 , TASK_TYPE
+			 , TASK_CODE
+			 , USE_YN
+			 , WRITE_DATE
+			 , WRITER_ID
+			 , FILE_SIZE
+			 , FILE_GUBUN
+			 , TITLE
+			 )
+		VALUES
+		     ( #{attachFileSeq}
+		     , ( SELECT NVL(MAX(ORDER_NO), 0) + 1 FROM BIZ_ATTACH_FILE WHERE ATTACH_FILE_SEQ = #{attachFileSeq} ) 
+		     , #{fileSeq}
+		     , #{fileName}
+		     , #{masterNo}
+		     , #{taskType}
+		     , #{taskCode}
+		     , 'Y'
+		     , SYSDATE
+		     , #{writerId}
+		     , #{fileSize}
+		     , #{fileGubun}
+		     , #{title}
+		     )
+	</insert>
+	
+	<!-- 파일 수정 : 삭제 -->
+    <update id="deleteFile" parameterType="HashMap">
+		UPDATE BIZ_ATTACH_FILE
+           SET USE_YN = 'N'
+             , DELETE_ID = #{writerId}
+             , DELETE_DATE = SYSDATE
+         WHERE ATTACH_FILE_SEQ = #{attachFileSeq}
+           AND ORDER_NO = #{orderNo}
+	</update>
+	
+	
+    
+</mapper>

@@ -1,0 +1,957 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.koen.kopms_api.task.biz.dao.BizDao">
+
+    <!-- ================================================================= -->
+    <!-- [1] 공통 SQL 프래그먼트                                              -->
+    <!-- ================================================================= -->
+    <!-- BIZ_MASTER 주요 컬럼 재사용 프래그먼트 — 목록/상세 조회에서 공통으로 사용  -->
+    <!-- REGI_DATE, FINISH_DATE: DATE → VARCHAR 변환 (YYYY-MM-DD)            -->
+    <!-- UPDATE_DATE: 최근 수정일 (날짜 변환 없이 그대로 반환)                   -->
+
+    <sql id="bizMasterColumns">
+        m.MASTER_NO,        m.DOC_NO,           m.BIZ_TITLE,        m.WRITER_ID,        m.DEPT_NO,
+        m.POS_NAME,         m.WRITER_NAME,      m.CONTINENT_CODE,   m.NATION_CODE,      m.INFO_METHOD,
+        m.PRO_STATE,        m.PRO_STEP,         m.BIZ_SECTION,      m.BIZ_TYPE,         m.BIZ_FORM,
+        m.BIZ_FORMDETAIL,   m.POWER_TYPE,       m.S_LEVEL,          m.INVEST_TYPE,      m.BRANCH_YN,
+        m.BIZ_REASON,       m.AREA_CODE,        m.UPDATE_DATE,
+        TO_CHAR(m.REGI_DATE,   'YYYY-MM-DD') AS REGI_DATE,
+        TO_CHAR(m.FINISH_DATE, 'YYYY-MM-DD') AS FINISH_DATE
+    </sql>
+
+    <!-- ${tableName}: 테이블명을 동적으로 받아 존재 여부 확인 (INSERT/UPDATE 분기용) -->
+    <!-- 주의: ${} 는 SQL 인젝션 위험이 있으므로 신뢰된 내부 값(테이블명)만 사용할 것 -->
+    <select id="checkDataExists" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+          FROM ${tableName}
+         WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [2] 사업목록 코드 조회                                               -->
+    <!-- ================================================================= -->
+    <!-- groupCodes: 여러 코드그룹을 IN 절로 한 번에 조회                        -->
+    <!-- useYn: 명시적으로 전달하지 않으면 기본값 'Y'(사용 코드만 조회)            -->
+    <!-- ORDER BY CODE_GROUP, SORT_ORDER: 프론트 드롭다운 표시 순서 보장          -->
+
+    <select id="selectCodeList" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT
+            CODE_GROUP,
+            CODE_VALUE,
+            CODE_NAME,
+            USE_YN,
+            UP_CODE_CODE AS UP_CODE,
+            SORT_ORDER
+        FROM COM_CODE
+        WHERE 1 = 1
+        <if test="groupCodes != null and groupCodes.size > 0">
+            AND CODE_GROUP IN
+            <foreach item="group" collection="groupCodes" open="(" separator="," close=")">
+                #{group}
+            </foreach>
+        </if>
+        <choose>
+            <when test="useYn != null and useYn != ''">
+                AND USE_YN = #{useYn}
+            </when>
+            <otherwise>
+                AND USE_YN = 'Y'
+            </otherwise>
+        </choose>
+        ORDER BY CODE_GROUP, SORT_ORDER
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [3] 사업목록 조회                                                    -->
+    <!-- ================================================================= -->
+    <!-- ROW_NUMBER(): 화면 표시용 순번 (MASTER_NO 순 정렬)                    -->
+    <!-- LEFT JOIN S1010: bizContents(사업내용) 검색 조건 연결용               -->
+    <!-- PRO_STATE_NAME, PRO_STEP_NAME, BIZ_SECTION_NAME: 코드 → 명칭 변환   -->
+    <!--                                                                     -->
+    <!-- proSteps: 다중 단계 필터 (IN 절) — 진행단계 복수 선택 시              -->
+    <!-- proStep:  단일 단계 필터 (= 조건) — 특정 단계 단독 조회 시            -->
+    <!--           두 파라미터가 공존할 경우 두 조건이 모두 AND로 적용됨         -->
+    <!--                                                                     -->
+    <!-- endDate + 0.99999: 종료일 당일 23:59:59까지 포함하기 위한 처리        -->
+    <!--   TO_DATE는 00:00:00 기준으로 변환되므로 +0.99999(≈0.99999일)를     -->
+    <!--   더해 당일 말까지 포함                                              -->
+
+    <select id="selectBizList" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT
+            ROW_NUMBER() OVER(ORDER BY m.MASTER_NO) AS RNUM,
+            <include refid="bizMasterColumns"/>,
+            (SELECT CODE_NAME FROM COM_CODE WHERE CODE_GROUP = '108' AND CODE_VALUE = m.PRO_STATE)   AS PRO_STATE_NAME,
+            (SELECT CODE_NAME FROM COM_CODE WHERE CODE_GROUP = '109' AND CODE_VALUE = m.PRO_STEP)    AS PRO_STEP_NAME,
+            (SELECT CODE_NAME FROM COM_CODE WHERE CODE_GROUP = '102' AND CODE_VALUE = m.BIZ_SECTION) AS BIZ_SECTION_NAME
+        FROM BIZ_MASTER m
+        LEFT JOIN S1010 s ON s.MASTER_NO = m.MASTER_NO
+        WHERE 1 = 1
+        <if test="bizTitle != null and bizTitle != ''">
+            AND m.BIZ_TITLE LIKE '%' || #{bizTitle} || '%'
+        </if>
+        <if test="bizContents != null and bizContents != ''">
+            AND s.BIZ_CONTENTS LIKE '%' || #{bizContents} || '%'
+        </if>
+        <if test="bizSection != null and bizSection != ''">
+            AND m.BIZ_SECTION = #{bizSection}
+        </if>
+        <if test="bizType != null and bizType != ''">
+            AND m.BIZ_TYPE = #{bizType}
+        </if>
+        <if test="powerType != null and powerType != ''">
+            AND m.POWER_TYPE = #{powerType}
+        </if>
+        <!-- 다중 단계 선택 필터 (proSteps 배열) -->
+        <if test="proSteps != null and proSteps.size > 0">
+            AND m.PRO_STEP IN
+            <foreach item="step" collection="proSteps" open="(" separator="," close=")">
+                #{step}
+            </foreach>
+        </if>
+        <!-- 단일 단계 필터 -->
+        <if test="proStep != null and proStep != ''">
+            AND m.PRO_STEP = #{proStep}
+        </if>
+        <if test="proState != null and proState != ''">
+            AND m.PRO_STATE = #{proState}
+        </if>
+        <if test="areaCode != null and areaCode != ''">
+            AND m.AREA_CODE = #{areaCode}
+        </if>
+        <!-- 시작일: 해당 날짜 00:00:00 이후 -->
+        <if test="startDate != null and startDate != ''">
+            AND m.REGI_DATE >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <!-- 종료일: 해당 날짜 23:59:59까지 포함 (+0.99999일) -->
+        <if test="endDate != null and endDate != ''">
+            AND m.REGI_DATE <![CDATA[<=]]> TO_DATE(#{endDate}, 'YYYY-MM-DD') + 0.99999
+        </if>
+        ORDER BY m.MASTER_NO DESC
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [4] 사업별 데이터 조회                                               -->
+    <!-- ================================================================= -->
+    <!-- LEFT JOIN DEPT: 부서명(DEPT_NAME) 함께 반환                          -->
+    <!-- masterNo 없이도 호출될 경우를 대비해 WHERE 1=1 구조 유지              -->
+
+    <select id="selectBizData" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT
+            <include refid="bizMasterColumns"/>,
+            d.DEPT_NAME
+        FROM BIZ_MASTER m
+        LEFT JOIN DEPT d ON m.DEPT_NO = d.DEPTNO
+        WHERE 1 = 1
+        <if test="masterNo != null and masterNo != ''">
+            AND m.MASTER_NO = #{masterNo}
+        </if>
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [5] Task 정보 조회 (BIZ_PORTAL)                                     -->
+    <!-- ================================================================= -->
+    <!-- BIZ_PORTAL + BIZ_TASK JOIN: 태스크 기간/상태 + 태스크명 함께 조회     -->
+    <!-- excludeCodes: D80, D90 내부 코드 제외 (109 타입에만 적용)             -->
+    <!--                                                                     -->
+    <!-- ORDER BY 정렬 규칙:                                                 -->
+    <!--   1순위: TASK_TYPE (109 → 180 → 181 → 182 → 183 순서)              -->
+    <!--   2순위: TASK_CODE 중 'S'로 시작하면 0, 'D'로 시작하면 1            -->
+    <!--          → 사내절차 내에서 사업발굴(S) 단계가 사업개발(D) 단계보다 앞에 배치 -->
+    <!--   3순위: TASK_CODE 알파벳순                                          -->
+
+    <select id="selectBizTasks" parameterType="HashMap" resultType="CamelHashMap">
+	    SELECT
+	    	p.TASK_TYPE,		p.TASK_CODE,		p.PLN_START_DATE,	p.PLN_TAKE_DAYS,	p.PLN_END_DATE,
+	    	p.PRF_START_DATE,	p.PRF_TAKE_DAYS,	p.PRF_END_DATE,		p.LEAD_DAYS,		p.DELAY_RATE,
+	    	p.PREV_TASK,		p.NEXT_TASK,		p.TIP_DESC,			p.TASK_STATUS,		p.REGI_DATE,
+	    	p.INWRITER_ID,		p.UPDATE_DATE,		p.UPWRITER_ID,		t.TASK_NAME,
+	    	t.TEMPLATE_YN,		p.TEMPLATE_CODE
+        FROM BIZ_PORTAL p
+        LEFT JOIN BIZ_TASK t ON t.BIZ_TYPE = p.TASK_TYPE AND t.TASK_CODE = p.TASK_CODE
+        WHERE 1 = 1
+        <if test="masterNo != null and masterNo != ''">
+            AND p.MASTER_NO = #{masterNo}
+        </if>
+        <!-- D80, D90: TASK_TYPE='109'에 한정하여 제외 (다른 타입의 동일 코드는 영향 없음) -->
+        <if test="excludeCodes != null and excludeCodes.size > 0">
+            AND NOT (
+                p.TASK_TYPE = '109'
+                AND p.TASK_CODE IN
+                <foreach item="code" collection="excludeCodes" open="(" separator="," close=")">
+                    #{code}
+                </foreach>
+            )
+        </if>
+        ORDER BY
+		    p.TASK_TYPE,
+		    CASE WHEN p.TASK_CODE LIKE 'S%' THEN 0 ELSE 1 END, -- S(사업발굴) → D(사업개발) 순서
+		    p.TASK_CODE
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [6] DOC_SEQ 채번 (서비스에서 INSERT 전 호출)                        -->
+    <!--   DOC_NO 조합 규칙: 년(YYYY) + 사업구분 + 사업유형 + 투자유형 + SEQ    -->
+    <!--   seq만 채번 후 서비스에서 조합 (UPDATE 시 seq 재채번 없이 재사용)       -->
+    <!-- ================================================================= -->
+    <select id="getNextDocSeqNo" resultType="string">
+        SELECT TO_CHAR(DOC_SEQ.NEXTVAL) FROM DUAL
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [7] BIZ_MASTER 신규 등록                                            -->
+    <!-- ================================================================= -->
+    <!--   MASTER_NO 채번 규칙 (selectKey BEFORE):                           -->
+    <!--     '#{menuCode}' + TO_CHAR(SYSDATE,'YYYYMM') + LPAD(SEQ, 6, '0')          -->
+    <!--     예) RE202603000001                                              -->
+    <!--   selectKey order="BEFORE": INSERT 전에 PK 채번 후 searchMap에 세팅   -->
+    <!--   → 서비스에서 searchMap.get("masterNo")로 생성된 PK 바로 사용 가능    -->
+
+    <insert id="insertBizMaster" parameterType="map">
+        <selectKey keyProperty="masterNo" resultType="string" order="BEFORE">
+            SELECT #{menuCode} || TO_CHAR(SYSDATE, 'YYYYMM') || LPAD(TO_CHAR(NBM_MASTER_SEQ.NEXTVAL), 6, '0') FROM DUAL
+        </selectKey>
+        INSERT INTO BIZ_MASTER (
+            MASTER_NO,      DOC_NO,         BIZ_TITLE,		  WRITER_ID,      DEPT_NO,
+            POS_NAME,       WRITER_NAME,    CONTINENT_CODE,	  NATION_CODE,    INFO_METHOD,
+            PRO_STATE,      PRO_STEP,       REGI_DATE,		  BIZ_SECTION,    BIZ_TYPE,
+            BIZ_FORM,       POWER_TYPE,     INVEST_TYPE,	  BRANCH_YN,      AREA_CODE
+        ) VALUES (
+            #{masterNo},    #{docNo},       #{bizTitle},	  #{writerId},	  #{deptNo},
+            #{posName},     #{writerName},  #{continentCode}, #{nationCode},  #{infoMethod},
+            #{proState},    #{proStep},     SYSDATE,		  #{bizSection},  #{bizType},
+            #{bizForm},     #{powerType},   #{investType},	  #{branchYn},    #{areaCode}
+        )
+    </insert>
+
+    <!-- ================================================================= -->
+    <!-- [8] BIZ_MASTER 수정                                                -->
+    <!-- ================================================================= -->
+    <!-- PRO_STEP, REGI_DATE는 수정 대상 아님 (단계 진행은 updateBizStep 사용) -->
+
+    <update id="updateBizMaster" parameterType="map">
+        UPDATE BIZ_MASTER
+           SET DOC_NO         = #{docNo},
+		   	   BIZ_TITLE      = #{bizTitle},
+               WRITER_ID      = #{writerId},
+               DEPT_NO        = #{deptNo},
+               POS_NAME       = #{posName},
+               WRITER_NAME    = #{writerName},
+               CONTINENT_CODE = #{continentCode},
+               NATION_CODE    = #{nationCode},
+               INFO_METHOD    = #{infoMethod},
+               BIZ_SECTION    = #{bizSection},
+               BIZ_TYPE       = #{bizType},
+               BIZ_FORM       = #{bizForm},
+               POWER_TYPE     = #{powerType},
+               BIZ_REASON     = #{bizReason},
+               INVEST_TYPE    = #{investType},
+               BRANCH_YN      = #{branchYn},
+               AREA_CODE      = #{areaCode},
+               UPDATE_DATE    = SYSDATE
+         WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [9] 단계 진행 전용 쿼리                                              -->
+    <!-- ================================================================= -->
+    <!-- setBizStep()에서 호출 — PRO_STEP(단계)과 PRO_STATE(진행상태)만 갱신   -->
+    <!-- BIZ_MASTER 일반 수정(updateBizMaster)과 분리하여 책임 명확화          -->
+
+    <update id="updateBizStep" parameterType="map">
+        UPDATE BIZ_MASTER
+           SET PRO_STEP    = #{proStep},
+               PRO_STATE   = #{proState},
+               UPDATE_DATE = SYSDATE
+         WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [10] BIZ_PORTAL Task 저장/갱신                                      -->
+    <!-- ================================================================= -->
+    <!-- deleteBizPortalTasks:                                              -->
+    <!--   codes가 있으면 → TASK_CODE NOT IN (선택된 codes): 해제된 코드만 삭제  -->
+    <!--   codes가 없으면 → 해당 TASK_TYPE 부모 rows 전체 삭제                  -->
+    <!--   TEMPLATE_CODE IS NULL 조건으로 자식 rows는 절대 삭제하지 않음         -->
+    <!--   (자식 삭제는 deleteChildTask API를 통해서만 가능)                     -->
+
+    <delete id="deleteBizPortalTasks" parameterType="map">
+        DELETE FROM BIZ_PORTAL
+        WHERE MASTER_NO = #{masterNo}
+          AND TASK_TYPE = #{taskType}
+          AND TEMPLATE_CODE IS NULL
+        <choose>
+            <when test="codes != null and codes.size > 0">
+                AND TASK_CODE NOT IN
+                <foreach collection="codes" item="code" open="(" separator="," close=")">
+                    #{code}
+                </foreach>
+            </when>
+            <!-- 선택된 코드 없음 → 해당 TASK_TYPE 부모 rows 전체 삭제 -->
+        </choose>
+    </delete>
+
+    <!-- ================================================================= -->
+    <!-- uncheckChildTasks: 선택 해제된 자식 task → TASK_STATUS = 'C'       -->
+    <!-- 자식 task(TEMPLATE_CODE IS NOT NULL) 중 codes에 없는 것만 대상      -->
+    <!-- ================================================================= -->
+    <update id="uncheckChildTasks" parameterType="map">
+        UPDATE BIZ_PORTAL
+           SET TASK_STATUS  = 'C',
+               UPDATE_DATE  = SYSDATE
+         WHERE MASTER_NO    = #{masterNo}
+           AND TASK_TYPE    = #{taskType}
+           AND TEMPLATE_CODE IS NOT NULL
+           AND TASK_STATUS != 'Y'
+        <choose>
+            <when test="codes != null and codes.size > 0">
+                AND TASK_CODE NOT IN
+                <foreach collection="codes" item="code" open="(" separator="," close=")">
+                    #{code}
+                </foreach>
+            </when>
+            <!-- 선택된 코드 없음 → 해당 TASK_TYPE 자식 rows 전체 미선택 처리 -->
+        </choose>
+    </update>
+
+    <!-- mergeBizPortal:                                                    -->
+    <!--   WHEN MATCHED     → UPWRITER_ID/UPDATE_DATE만 갱신               -->
+    <!--                      INWRITER_ID, REGI_DATE, TASK_STATUS는 건드리지 않음 -->
+    <!--                      → 기존 등록자/등록일/진행상태 보존               -->
+    <!--   WHEN NOT MATCHED → 신규 INSERT (TASK_STATUS='N' 미작성 상태로 시작) -->
+    <insert id="mergeBizPortal" parameterType="map">
+        MERGE INTO BIZ_PORTAL p
+        USING DUAL
+           ON (p.MASTER_NO = #{masterNo} AND p.TASK_TYPE = #{taskType} AND p.TASK_CODE = #{taskCode})
+        WHEN MATCHED THEN
+            UPDATE SET
+                UPDATE_DATE = SYSDATE,
+                UPWRITER_ID = #{writerId}
+        WHEN NOT MATCHED THEN
+            INSERT (
+                MASTER_NO,  TASK_TYPE,   TASK_CODE,  REGI_DATE,   INWRITER_ID,
+                TASK_STATUS, UPDATE_DATE, UPWRITER_ID, TEMPLATE_CODE
+            ) VALUES (
+                #{masterNo}, #{taskType}, #{taskCode}, SYSDATE,   #{writerId},
+                #{taskStatus}, SYSDATE,  #{writerId},  #{templateCode}
+            )
+    </insert>
+
+    <!-- ================================================================= -->
+    <!-- [10-1] 현재 사업의 최대 차수 번호 조회 (addChildTask 차수 번호 계산용) -->
+    <!-- ================================================================= -->
+    <!-- COUNT 대신 MAX 사용 — 중간 차수 삭제 후 재추가 시 번호 충돌 방지         -->
+    <!-- taskCode 형식: templateCode + "-NN" → 숫자 부분만 추출해 MAX           -->
+    <select id="countChildTasks" parameterType="map" resultType="int">
+        SELECT NVL(MAX(TO_NUMBER(SUBSTR(TASK_CODE, LENGTH(#{templateCode}) + 2))), 0)
+          FROM BIZ_PORTAL
+         WHERE TEMPLATE_CODE = #{templateCode}
+           AND TASK_TYPE     = #{taskType}
+           AND MASTER_NO     = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [11] BIZ_PORTAL 태스크 상태 갱신                                    -->
+    <!-- ================================================================= -->
+    <!-- updateBizPortalStatus: 단일 태스크 TASK_STATUS 갱신 (진행단계 저장 시) -->
+    <!-- updateRemainingBizPortalStatus: 종결(T) 시 후속 미완료 단계 일괄 갱신  -->
+
+    <update id="updateBizPortalStatus" parameterType="map">
+        UPDATE BIZ_PORTAL
+           SET TASK_STATUS = #{taskStatus},
+               UPDATE_DATE = SYSDATE,
+               UPWRITER_ID = #{writerId}
+         WHERE MASTER_NO = #{masterNo}
+           AND TASK_TYPE  = #{taskType}
+           AND TASK_CODE  = #{taskCode}
+           <if test="skipIfDone == true">
+           AND TASK_STATUS != 'Y'
+           </if>
+           <if test="onlyIfNew == true">
+           AND TASK_STATUS = 'N'
+           </if>
+    </update>
+
+    <!-- taskStatus='T'(종결) 시 remainingSteps 목록의 태스크를 일괄 종결 처리 -->
+    <update id="updateRemainingBizPortalStatus" parameterType="map">
+	    UPDATE BIZ_PORTAL
+	       SET TASK_STATUS = #{taskStatus},
+	           UPDATE_DATE = SYSDATE,
+	           UPWRITER_ID = #{writerId}
+	     WHERE MASTER_NO = #{masterNo}
+	       AND TASK_TYPE  = #{taskType}
+	       AND TASK_CODE IN
+	    <foreach collection="remainingSteps" item="code" open="(" separator="," close=")">
+	        #{code}
+	    </foreach>
+	</update>
+
+    <!-- ================================================================= -->
+    <!-- [12] 사업 전체 삭제 SQL                                              -->
+    <!-- ================================================================= -->
+    <!-- 서비스(deleteBizData)에서 FK 순서(자식→부모)에 따라 순차 호출:         -->
+    <!--   deleteBizPortal → deleteConsortiumHistory → deleteConsortium      -->
+    <!--   → deleteS1010History → deleteS1010 → deleteBizMaster             -->
+
+    <delete id="deleteBizPortal" parameterType="String">
+	    DELETE FROM BIZ_PORTAL
+	    WHERE MASTER_NO = #{masterNo}
+	</delete>
+
+	<delete id="deleteS1010" parameterType="String">
+    	DELETE FROM S1010
+		WHERE MASTER_NO = #{masterNo}
+	</delete>
+
+	<delete id="deleteS1010History" parameterType="String">
+    	DELETE FROM S1010_HISTORY
+		WHERE MASTER_NO = #{masterNo}
+	</delete>
+
+	<delete id="deleteConsortium" parameterType="String">
+        DELETE FROM S1010_CONSORTIUM
+        WHERE MASTER_NO = #{masterNo}
+    </delete>
+
+	<delete id="deleteConsortiumHistory" parameterType="String">
+        DELETE FROM S1010_CONSORTIUM_HISTORY
+        WHERE MASTER_NO = #{masterNo}
+    </delete>
+
+	<delete id="deleteBizMaster" parameterType="String">
+		DELETE FROM BIZ_MASTER
+		WHERE MASTER_NO = #{masterNo}
+    </delete>
+
+    <!-- ================================================================= -->
+    <!-- [13] Task 코드 관리 (BIZ_TASK)                                      -->
+    <!-- ================================================================= -->
+    <!-- selectTaskList: EXCLUDED_TASK_CODES(D80, D90) 제외                 -->
+    <!-- 정렬: S 코드(사업발굴) → D 코드(사업개발) 순, 같은 그룹 내 코드순        -->
+
+    <select id="selectTaskList" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT
+            BIZ_TYPE,
+            TASK_CODE,
+            TASK_NAME,
+            TAKE_DAYS,
+            TEMPLATE_YN,
+            TEMPLATE_CODE
+        FROM BIZ_TASK
+        WHERE 1 = 1
+        <if test="bizType != null and bizType != ''">
+            AND BIZ_TYPE = #{bizType}
+        </if>
+        <if test="excludeChildren != null and excludeChildren == true">
+            AND TEMPLATE_CODE IS NULL
+        </if>
+        <if test="excludeCodes != null and excludeCodes.size > 0">
+            AND NOT (
+                BIZ_TYPE = '109'
+                AND TASK_CODE IN
+                <foreach item="code" collection="excludeCodes" open="(" separator="," close=")">
+                    #{code}
+                </foreach>
+            )
+        </if>
+        ORDER BY
+            CASE WHEN BIZ_TYPE = '109' AND SUBSTR(TASK_CODE, 1, 1) = 'S' THEN 0 ELSE 1 END,
+            CASE WHEN TEMPLATE_YN = 'Y' THEN 0 ELSE 1 END,
+            TASK_CODE
+    </select>
+
+    <!-- 특정 코드 단건 조회 (중복 체크 및 수정 전 데이터 확인용) -->
+    <select id="selectTaskByKey" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT
+            BIZ_TYPE,
+            TASK_CODE,
+            TASK_NAME,
+            TAKE_DAYS
+        FROM BIZ_TASK
+        WHERE BIZ_TYPE  = #{bizType}
+          AND TASK_CODE = #{taskCode}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [14] Task 코드 이력 조회 (BIZ_TASK_HISTORY)                         -->
+    <!-- ================================================================= -->
+    <!-- IS_NEW_TASK: REGI_DATE와 VERSION_UPDATE_DATE가 5초(5/86400일) 이내   -->
+    <!--   → 신규 등록 시 초기 이력 저장 여부 판별 (최초 버전 여부 표시용)        -->
+    <!-- VERSION DESC: 최신 변경 이력이 맨 위에 표시                           -->
+
+    <select id="selectTaskHistoryList" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT
+            BIZ_TYPE,
+            TASK_CODE,
+            VERSION,
+            TASK_NAME,
+            TAKE_DAYS,
+            TO_CHAR(VERSION_UPDATE_DATE, 'YYYY-MM-DD HH24:MI:SS') AS VERSION_UPDATE_DATE,
+            VERSION_UPDATE_NAME,
+            VERSION_UPDATE_USERID,
+            CASE
+                WHEN ABS(REGI_DATE - VERSION_UPDATE_DATE) &lt; 5/86400
+                THEN 'Y'  -- 등록 시각과 5초 이내 → 신규 등록 초기 이력
+                ELSE 'N'
+            END AS IS_NEW_TASK
+        FROM BIZ_TASK_HISTORY
+        ORDER BY VERSION DESC
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [15] Task 코드 이력 저장 (BIZ_TASK_HISTORY)                         -->
+    <!-- ================================================================= -->
+    <!-- BIZ_TASK에서 현재 데이터를 SELECT 후 이력 테이블에 INSERT (SELECT INTO) -->
+    <!-- VERSION: 이력 테이블 전체 MAX(VERSION) + 1 (BIZ_TYPE/TASK_CODE 무관)  -->
+    <!-- VERSION_UPDATE_DATE: 이력 생성 시점 SYSDATE                         -->
+    <!-- VERSION_UPDATE_USERID/NAME: 서비스에서 주입한 현재 로그인 사용자 정보   -->
+
+    <insert id="insertBizTaskHistory" parameterType="map">
+        INSERT INTO BIZ_TASK_HISTORY (
+            BIZ_TYPE,   TASK_CODE,  VERSION,    TASK_NAME,  TAKE_DAYS,
+            REGI_DATE,  INWRITER_ID, UPDATE_DATE, UPWRITER_ID, VERSION_UPDATE_DATE,
+            VERSION_UPDATE_USERID,  VERSION_UPDATE_NAME
+        )
+        SELECT
+            BIZ_TYPE,
+            TASK_CODE,
+            (SELECT NVL(MAX(VERSION), 0) + 1 FROM BIZ_TASK_HISTORY),
+            TASK_NAME,  TAKE_DAYS,
+            REGI_DATE,  INWRITER_ID,    UPDATE_DATE,    UPWRITER_ID,    SYSDATE,
+            #{writerId}, #{writerName}
+        FROM BIZ_TASK
+        WHERE BIZ_TYPE  = #{bizType}
+          AND TASK_CODE = #{taskCode}
+    </insert>
+
+    <!-- ================================================================= -->
+    <!-- [16] Task 코드 저장/수정 (MERGE)                                    -->
+    <!-- ================================================================= -->
+    <!-- WHEN MATCHED     → TASK_NAME, TAKE_DAYS, UPWRITER_ID, UPDATE_DATE 갱신 -->
+    <!-- WHEN NOT MATCHED → 신규 INSERT (INWRITER_ID = UPWRITER_ID = writerId) -->
+
+    <update id="saveBizTask" parameterType="map">
+        MERGE INTO BIZ_TASK T
+        USING DUAL
+           ON (T.BIZ_TYPE = #{bizType} AND T.TASK_CODE = #{taskCode})
+        WHEN MATCHED THEN
+            UPDATE SET
+                T.TASK_NAME   = #{taskName},
+                T.TAKE_DAYS   = #{takeDays},
+                T.TEMPLATE_YN = #{templateYn},
+                T.UPDATE_DATE = SYSDATE,
+                T.UPWRITER_ID = #{writerId}
+        WHEN NOT MATCHED THEN
+            INSERT (
+                BIZ_TYPE,   TASK_CODE,  TASK_NAME,  TAKE_DAYS,  TEMPLATE_YN,  TEMPLATE_CODE,
+                REGI_DATE,  INWRITER_ID, UPDATE_DATE, UPWRITER_ID
+            ) VALUES (
+                #{bizType}, #{taskCode}, #{taskName}, #{takeDays}, #{templateYn}, #{templateCode},
+                SYSDATE,    #{writerId}, SYSDATE,     #{writerId}
+            )
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [17] Task 코드 삭제 (BIZ_TASK / BIZ_TASK_HISTORY)                   -->
+    <!-- ================================================================= -->
+    <!-- checkTaskInUse: BIZ_PORTAL에서 해당 Task가 사용 중인지 확인           -->
+    <!-- deleteTaskHistory: 이력 먼저 삭제 (BIZ_TASK_HISTORY)                -->
+    <!-- deleteTask: 마스터 삭제 (BIZ_TASK)                                  -->
+
+    <select id="checkTaskInUse" parameterType="HashMap" resultType="int">
+        SELECT COUNT(*)
+          FROM BIZ_PORTAL
+         WHERE TASK_TYPE = #{bizType}
+           AND TASK_CODE = #{taskCode}
+    </select>
+
+    <delete id="deleteTaskHistory" parameterType="HashMap">
+        DELETE FROM BIZ_TASK_HISTORY
+         WHERE BIZ_TYPE  = #{bizType}
+           AND TASK_CODE = #{taskCode}
+    </delete>
+
+    <delete id="deleteTask" parameterType="HashMap">
+        DELETE FROM BIZ_TASK
+         WHERE BIZ_TYPE  = #{bizType}
+           AND TASK_CODE = #{taskCode}
+    </delete>
+
+    <!-- ================================================================= -->
+    <!-- [18] 공정표 조회 (BIZ_PORTAL + BIZ_TASK JOIN)                       -->
+    <!-- ================================================================= -->
+    <!-- TASK_CODE_ORD: 정렬용 가상 컬럼 변환                                 -->
+    <!--   TASK_TYPE='109' AND TASK_CODE 'S'로 시작 → 'A' + 코드숫자        -->
+    <!--   TASK_TYPE='109' AND TASK_CODE 'D'로 시작 → 'B' + 코드숫자        -->
+    <!--   나머지 타입 → TASK_CODE 그대로                                     -->
+    <!--   결과: 109 타입 내에서 S10→S20→...→D10→D20→... 순서 보장           -->
+    <!--                                                                     -->
+    <!-- COMPLETE: 진행률 계산 (실적 소요기간 / 계획 소요기간 × 100)             -->
+    <!--   NVL(PLN_TAKE_DAYS,0) != 0 AND NVL(PRF_TAKE_DAYS,0) != 0 조건:   -->
+    <!--   둘 다 0이 아닌 경우에만 계산, 나머지는 0 반환 (0나누기 방지)           -->
+    <!--                                                                     -->
+    <!-- COME_CODE_GROUP JOIN: TASK_TYPE_NAME 코드 → 명칭 변환               -->
+    <!--   예외: TASK_TYPE='109'는 '사내절차'로 하드코딩 (코드그룹이 별도 없음)   -->
+
+    <select id="selectBizTaskList" parameterType="HashMap" resultType="CamelHashMap">
+		/* selectBizTaskList 공정표 목록 조회 */
+		SELECT A.MASTER_NO
+		     , A.TASK_TYPE
+		     , A.TASK_TYPE_NAME
+		     , A.TASK_CODE
+		     , A.TASK_CODE_ORD
+		     , A.TASK_NAME
+		     , A.TAKE_DAYS         -- 소요기간(BIZ_TASK 기준)
+		     , A.PLN_START_DATE    -- 계획 시작일자
+		     , A.PLN_TAKE_DAYS     -- 계획 소요기간
+		     , A.PLN_END_DATE      -- 계획 종료일자
+		     , A.PRF_START_DATE    -- 실적 시작일자
+		     , A.PRF_TAKE_DAYS     -- 실적 소요기간
+		     , A.PRF_END_DATE      -- 실적 완료일자
+		     , A.LEAD_DAYS         -- 평균소요시간
+		     , A.DELAY_RATE        -- 평균지연확률
+		     , A.PREV_TASK         -- 이전업무
+		     , A.NEXT_TASK         -- 다음업무
+		     , A.TIP_DESC          -- TIP 설명
+		     , A.TASK_STATUS       -- 진행 완료 여부 (Y/N/S/T/H)
+		     , A.TEMPLATE_YN
+		     -- 진행률: 실적/계획 소요기간 비율 (둘 중 하나라도 0이면 0 반환)
+		     , CASE WHEN NVL(PLN_TAKE_DAYS,0)!=0 AND NVL(PRF_TAKE_DAYS,0)!=0 THEN ROUND(CAST(PRF_TAKE_DAYS AS FLOAT)/CAST(PLN_TAKE_DAYS AS FLOAT)*100,0) ELSE 0 END AS COMPLETE
+		     , (SELECT COUNT(TASK_CODE ) AS FILE_CNT FROM BIZ_ATTACH_FILE F WHERE A.MASTER_NO=F.MASTER_NO AND A.TASK_TYPE=F.TASK_TYPE AND A.TASK_CODE=F.TASK_CODE AND F.USE_YN='Y'  ) AS FILE_CNT
+		     , ( SELECT bm.BIZ_TITLE FROM BIZ_MASTER bm WHERE bm.MASTER_NO=A.MASTER_NO ) AS BIZ_TITLE
+		  FROM (
+			 SELECT A.MASTER_NO
+			     , A.TASK_TYPE
+			     -- '109'(사내절차)는 코드그룹명 없으므로 하드코딩
+			     , CASE WHEN A.TASK_TYPE='109' THEN '사내절차' ELSE CM.CODE_GROUP_NAME END TASK_TYPE_NAME
+			     , A.TASK_CODE
+			     -- 정렬용 가상 컬럼: S→A 변환, D→B 변환으로 S→D 순서 보장
+			     , CASE WHEN A.TASK_TYPE='109' AND SUBSTR(A.TASK_CODE,1,1)='S' THEN 'A'||SUBSTR(A.TASK_CODE,2,LENGTH(A.TASK_CODE)-1 )
+			            WHEN A.TASK_TYPE='109' AND SUBSTR(A.TASK_CODE,1,1)='D' THEN 'B'||SUBSTR(A.TASK_CODE,2,LENGTH(A.TASK_CODE)-1 )
+			            WHEN A.TASK_TYPE='109' THEN 'C'||SUBSTR(A.TASK_CODE,2,LENGTH(A.TASK_CODE)-1 )
+			            ELSE '' ---- A.TASK_CODE
+			       END TASK_CODE_ORD
+			     , CMD.TASK_NAME   -- 2차분류 태스크명
+			     , CMD.TAKE_DAYS   -- 소요기간(BIZ_TASK 기준)
+			     , A.PLN_START_DATE
+			     , NVL(A.PLN_TAKE_DAYS,CMD.TAKE_DAYS) AS PLN_TAKE_DAYS -- 계획 소요기간 없으면 기준값 사용
+			     , A.PLN_END_DATE
+			     , A.PRF_START_DATE
+			     , A.PRF_TAKE_DAYS
+			     , A.PRF_END_DATE
+			     , A.LEAD_DAYS
+			     , A.DELAY_RATE
+			     , A.PREV_TASK
+			     , A.NEXT_TASK
+			     , A.TIP_DESC
+			     , A.TASK_STATUS
+			     , CMD.TEMPLATE_YN
+			 FROM BIZ_PORTAL A
+			      INNER JOIN COME_CODE_GROUP CM ON A.TASK_TYPE=CM.CODE_GROUP
+			      INNER JOIN BIZ_TASK CMD ON A.TASK_TYPE=CMD.BIZ_TYPE AND A.TASK_CODE=CMD.TASK_CODE AND CMD.TEMPLATE_YN='N'
+			WHERE A.MASTER_NO=#{masterNo} AND A.TASK_STATUS!='C'
+	        <if test="taskType != null and taskType != ''">
+	            AND A.TASK_TYPE = #{taskType}
+	        </if>
+	        <if test="taskCode != null and taskCode != ''">
+	            AND A.TASK_CODE = #{taskCode}
+	        </if>
+		  ) A
+		ORDER BY A.TASK_TYPE, A.TASK_CODE_ORD,A.PLN_START_DATE   
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [19] 공정표 기간 저장                                                -->
+    <!-- ================================================================= -->
+    <!-- 계획(PLN) + 실적(PRF) 기간을 한 번에 갱신                            -->
+    <!-- UPWRITER_ID: 서비스에서 SessionContext로 현재 로그인 사용자 주입       -->
+
+    <update id="updateTaskItemPeriod" parameterType="map">
+		UPDATE BIZ_PORTAL
+		   SET PLN_START_DATE = #{plnStartDate}
+		     , PLN_END_DATE   = #{plnEndDate}
+		     , PLN_TAKE_DAYS  = #{plnTakeDays}
+		     , PRF_START_DATE = #{prfStartDate}
+		     , PRF_END_DATE   = #{prfEndDate}
+		     , PRF_TAKE_DAYS  = #{prfTakeDays}
+		     , LEAD_DAYS      = #{leadDays}
+		     , DELAY_RATE     = #{delayRate}
+		     , TIP_DESC       = #{tipDesc}
+		     , UPDATE_DATE    = SYSDATE
+		     , UPWRITER_ID    = #{writerId}
+		WHERE MASTER_NO = #{masterNo}
+		  AND TASK_TYPE = #{taskType}
+		  AND TASK_CODE = #{taskCode}
+    </update>
+    
+    <insert id="insertTaskItemPeriodHistory" parameterType="map">
+		   INSERT INTO BIZ_PORTAL_HISTORY
+		   (
+			  MASTER_NO,TASK_TYPE,TASK_CODE
+			, VERSION
+			, PLN_START_DATE,PLN_TAKE_DAYS,PLN_END_DATE
+			, PRF_START_DATE,PRF_TAKE_DAYS,PRF_END_DATE
+			, LEAD_DAYS,DELAY_RATE,PREV_TASK,NEXT_TASK,TIP_DESC
+			, TASK_STATUS,TEMPLATE_CODE
+			, REGI_DATE,INWRITER_ID,UPDATE_DATE,UPWRITER_ID   
+		   )   
+		   SELECT MASTER_NO,TASK_TYPE,TASK_CODE
+		         ,( SELECT NVL(MAX(VERSION) ,0) +1
+		              FROM BIZ_PORTAL_HISTORY B
+		             WHERE A.MASTER_NO=B.MASTER_NO
+					   AND A.TASK_TYPE=B.TASK_TYPE
+					   AND A.TASK_CODE=B.TASK_CODE	
+					   ) AS VERSION
+		         ,PLN_START_DATE,PLN_TAKE_DAYS,PLN_END_DATE
+		         ,PRF_START_DATE,PRF_TAKE_DAYS,PRF_END_DATE
+		         ,LEAD_DAYS,DELAY_RATE,PREV_TASK,NEXT_TASK,TIP_DESC
+		         ,TASK_STATUS,TEMPLATE_CODE,
+		         REGI_DATE,INWRITER_ID,UPDATE_DATE,UPWRITER_ID
+		     FROM BIZ_PORTAL A
+		    WHERE MASTER_NO = #{masterNo}
+			  AND TASK_TYPE = #{taskType}
+			  AND TASK_CODE = #{taskCode}
+    </insert>
+
+    <!-- ================================================================= -->
+    <!-- [20] 관련데이타 콤보 조회                                        -->
+    <!-- ================================================================= -->
+    <!-- 관련자료 조회용 콤보 : 1차분류(TASK_TYPE)                          -->
+    
+    <select id="selectBizTaskTypeList" parameterType="HashMap" resultType="CamelHashMap">
+		/* selectBizTaskTypeList 관련자료 조회용 콤보 : 1차분류(TASK_TYPE) */
+		SELECT DISTINCT A.MASTER_NO
+		     , A.TASK_TYPE AS VALUE
+		     , A.TASK_TYPE_NAME AS TEXT
+		     , ( SELECT bm.BIZ_TITLE FROM BIZ_MASTER bm WHERE bm.MASTER_NO=A.MASTER_NO ) AS BIZ_TITLE
+		  FROM (
+			 SELECT A.MASTER_NO
+			     , A.TASK_TYPE
+			     -- '109'(사내절차)는 코드그룹명 없으므로 하드코딩
+			     , CASE WHEN A.TASK_TYPE='109' THEN '사내절차' ELSE CM.CODE_GROUP_NAME END TASK_TYPE_NAME
+			 FROM BIZ_PORTAL A
+			      INNER JOIN COME_CODE_GROUP CM ON A.TASK_TYPE=CM.CODE_GROUP
+			      INNER JOIN BIZ_TASK CMD ON A.TASK_TYPE=CMD.BIZ_TYPE AND A.TASK_CODE=CMD.TASK_CODE AND CMD.TEMPLATE_YN='N'
+			WHERE A.MASTER_NO=#{masterNo} AND A.TASK_STATUS!='C'
+		  ) A
+		ORDER BY A.MASTER_NO, A.TASK_TYPE
+    </select>
+    
+    <!-- ================================================================= -->
+    <!-- [21] 관련데이타 콤보 조회                                        -->
+    <!-- ================================================================= -->
+    <!-- 관련자료 조회용 콤보 : 2차분류(TASK_CODE)                       -->
+    
+    <select id="selectBizTaskCodeList" parameterType="HashMap" resultType="CamelHashMap">
+		/* selectBizTaskCodeList 관련자료 조회용 콤보 : 2차분류(TASK_CODE) */
+		SELECT A.MASTER_NO
+		     , A.TASK_TYPE
+		     , A.TASK_TYPE_NAME
+		     , A.TASK_CODE
+		     , A.TASK_CODE_ORD
+		     , A.TASK_NAME
+		     , A.TASK_TYPE||A.TASK_CODE AS VALUE
+		     , '[ '||A.TASK_TYPE_NAME||' ]'||A.TASK_NAME AS TEXT
+		     , ( SELECT bm.BIZ_TITLE FROM BIZ_MASTER bm WHERE bm.MASTER_NO=A.MASTER_NO ) AS BIZ_TITLE
+		  FROM (
+			 SELECT A.MASTER_NO
+			     , A.TASK_TYPE
+			     -- '109'(사내절차)는 코드그룹명 없으므로 하드코딩
+			     , CASE WHEN A.TASK_TYPE='109' THEN '사내절차' ELSE CM.CODE_GROUP_NAME END TASK_TYPE_NAME
+			     , A.TASK_CODE
+			     -- 정렬용 가상 컬럼: S→A 변환, D→B 변환으로 S→D 순서 보장
+			     , CASE WHEN A.TASK_TYPE='109' AND SUBSTR(A.TASK_CODE,1,1)='S' THEN 'A'||SUBSTR(A.TASK_CODE,2,LENGTH(A.TASK_CODE)-1 )
+			            WHEN A.TASK_TYPE='109' AND SUBSTR(A.TASK_CODE,1,1)='D' THEN 'B'||SUBSTR(A.TASK_CODE,2,LENGTH(A.TASK_CODE)-1 )
+			            ELSE A.TASK_CODE
+			       END TASK_CODE_ORD
+			     , CMD.TASK_NAME   -- 2차분류 태스크명
+			 FROM BIZ_PORTAL A
+			      INNER JOIN COME_CODE_GROUP CM ON A.TASK_TYPE=CM.CODE_GROUP
+			      INNER JOIN BIZ_TASK CMD ON A.TASK_TYPE=CMD.BIZ_TYPE AND A.TASK_CODE=CMD.TASK_CODE AND CMD.TEMPLATE_YN='N'
+			WHERE A.MASTER_NO=#{masterNo} AND A.TASK_STATUS!='C'
+		  ) A
+		ORDER BY A.MASTER_NO, A.TASK_TYPE, A.TASK_CODE_ORD
+    </select>
+    
+    <!-- ================================================================= -->
+    <!-- [22] 관련자료 조회                                        -->
+    <!-- ================================================================= -->
+    <!--                        -->
+    
+    <select id="selectRelatedData" parameterType="HashMap" resultType="CamelHashMap">
+		SELECT 0 AS CHK, A.MASTER_NO , A.TASK_TYPE 
+		     -- '109'(사내절차)는 코드그룹명 없으므로 하드코딩
+			 , CASE WHEN A.TASK_TYPE='109' THEN '사내절차' ELSE CM.CODE_GROUP_NAME END TASK_TYPE_NAME
+		     , A.TASK_CODE 
+		     -- 정렬용 가상 컬럼: S→A 변환, D→B 변환으로 S→D 순서 보장
+		     , CASE WHEN A.TASK_TYPE='109' AND SUBSTR(A.TASK_CODE,1,1)='S' THEN 'A'||SUBSTR(A.TASK_CODE,2,LENGTH(A.TASK_CODE)-1 )
+		            WHEN A.TASK_TYPE='109' AND SUBSTR(A.TASK_CODE,1,1)='D' THEN 'B'||SUBSTR(A.TASK_CODE,2,LENGTH(A.TASK_CODE)-1 )
+		            WHEN A.TASK_TYPE='109' THEN 'C'||SUBSTR(A.TASK_CODE,2,LENGTH(A.TASK_CODE)-1 )
+		            ELSE '' --A.TASK_CODE
+		       END TASK_CODE_ORD
+		     , CMD.TASK_NAME   -- 2차분류 태스크명		     
+		     , A.ATTACH_FILE_SEQ , A.ORDER_NO , A.FILE_SEQ , A.FILE_NAME 
+		     , A.FILE_SIZE , A.TITLE 
+		     , A.DELETE_ID , A.USE_YN 
+		     , TO_CHAR( A.WRITE_DATE , 'YYYY-MM-DD' ) WRITE_DATE , A.WRITER_ID 
+		     , E.NAME AS WRITER_NAME
+		  FROM BIZ_ATTACH_FILE A
+		       INNER JOIN COME_CODE_GROUP CM ON A.TASK_TYPE=CM.CODE_GROUP
+		       INNER JOIN BIZ_TASK CMD ON A.TASK_TYPE=CMD.BIZ_TYPE AND A.TASK_CODE=CMD.TASK_CODE AND CMD.TEMPLATE_YN='N'
+		       INNER JOIN BIZ_PORTAL BP ON A.MASTER_NO=BP.MASTER_NO AND A.TASK_TYPE=BP.TASK_TYPE AND A.TASK_CODE=BP.TASK_CODE AND BP.TASK_STATUS!='C'
+		       LEFT OUTER JOIN EMPLOYEE E ON A.WRITER_ID=E.EMPNO 
+		 WHERE A.FILE_GUBUN IN ('A','R')
+		   AND A.MASTER_NO LIKE #{masterNo}||'%'
+		   AND A.TASK_TYPE LIKE #{searchTaskType}||'%'
+		   AND A.TASK_CODE LIKE SUBSTR(#{searchTaskCode},4)||'%'
+		   <if test="startDate != null and startDate != '' and endDate != null and endDate != '' ">
+		   AND TO_CHAR( A.WRITE_DATE , 'YYYY-MM-DD' ) BETWEEN #{startDate} AND #{endDate}
+		   </if>
+		   AND A.TITLE LIKE CASE WHEN #{searchType}='bizTitle' THEN '%'||#{searchText}||'%' ELSE '%' END
+		   AND A.FILE_NAME LIKE CASE WHEN #{searchType}='bizFile' THEN '%'||#{searchText}||'%' ELSE '%' END
+		 ORDER BY A.MASTER_NO, A.TASK_TYPE--, A.TASK_CODE_ORD
+    </select> 
+    
+    <!-- ================================================================= -->
+    <!-- [23] 관련자료 조회                                        -->
+    <!-- ================================================================= -->
+    <!--                        -->
+    
+    <select id="selectBizTaskPeriodHist" parameterType="HashMap" resultType="CamelHashMap">
+		SELECT A.MASTER_NO 
+		     , A.TASK_TYPE
+		     , A.TASK_CODE
+		     , A.VERSION||' ('||TO_CHAR(A.UPDATE_DATE,'YYYY-MM-DD HH24:MI')||')' AS VERSION
+		     , A.PLN_START_DATE
+		     , A.PLN_TAKE_DAYS
+		     , A.PLN_END_DATE
+		     , A.PRF_START_DATE
+		     , A.PRF_TAKE_DAYS
+		     , A.PRF_END_DATE
+		     , A.LEAD_DAYS
+		     , A.DELAY_RATE
+		     , A.TIP_DESC
+		     , A.UPDATE_DATE AS MOD_TIME
+		     , A.UPWRITER_ID AS MOD_USER
+		     , B.NAME AS MOD_USER_NM
+		     , ( SELECT bm.BIZ_TITLE FROM BIZ_MASTER bm WHERE bm.MASTER_NO=A.MASTER_NO ) AS BIZ_TITLE
+		  FROM BIZ_PORTAL_HISTORY A
+		       LEFT OUTER JOIN EMPLOYEE B ON A.UPWRITER_ID=B.EMPNO 
+		 WHERE A.MASTER_NO=#{masterNo}
+		   AND A.TASK_TYPE=#{taskType}
+		   AND A.TASK_CODE=#{taskCode}
+		 ORDER BY A.VERSION DESC
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- 사업 통계 조회                                                       -->
+    <!-- ================================================================= -->
+    <!-- yearmm: 1=년도별, 2=월별 집계                                        -->
+    <!-- yAxis: Y축 코드그룹 번호 → GROUP BY 시리즈 분기 (행 분기)            -->
+    <!-- xAxis: X축 코드그룹 번호 → 추가 GROUP BY (컬럼 분기, 선택사항)       -->
+    <!-- 결과: VDATE, CNT, Y_VALUE, X_VALUE                                  -->
+
+    <select id="selectBizStatistics" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            <choose>
+                <when test="yearmm == '1'">TO_CHAR(REGI_DATE, 'YYYY')</when>
+                <otherwise>TO_CHAR(REGI_DATE, 'YYYYMM')</otherwise>
+            </choose> AS VDATE,
+            COUNT(*) AS CNT,
+            <choose>
+                <when test="yAxis == '108'">PRO_STATE</when>
+                <when test="yAxis == '109'">PRO_STEP</when>
+                <when test="yAxis == '106'">CONTINENT_CODE</when>
+                <when test="yAxis == '104'">INFO_METHOD</when>
+                <when test="yAxis == '102'">BIZ_SECTION</when>
+                <when test="yAxis == '101'">BIZ_TYPE</when>
+                <when test="yAxis == '103'">BIZ_FORM</when>
+                <otherwise>NULL</otherwise>
+            </choose> AS Y_VALUE,
+            <choose>
+                <when test="xAxis == '108'">PRO_STATE</when>
+                <when test="xAxis == '109'">PRO_STEP</when>
+                <when test="xAxis == '106'">CONTINENT_CODE</when>
+                <when test="xAxis == '104'">INFO_METHOD</when>
+                <when test="xAxis == '102'">BIZ_SECTION</when>
+                <when test="xAxis == '101'">BIZ_TYPE</when>
+                <when test="xAxis == '103'">BIZ_FORM</when>
+                <otherwise>NULL</otherwise>
+            </choose> AS X_VALUE
+        FROM BIZ_MASTER
+        WHERE 1=1
+          AND WRITER_ID != '94103665'
+          AND PRO_STATE IS NOT NULL
+        <if test="stYear != null and stYear != ''">
+            <choose>
+                <when test="yearmm == '1'">
+                    AND TO_CHAR(REGI_DATE, 'YYYY') &gt;= #{stYear}
+                    AND TO_CHAR(REGI_DATE, 'YYYY') &lt;= #{endYear}
+                </when>
+                <otherwise>
+                    AND TO_CHAR(REGI_DATE, 'YYYYMM') &gt;= #{stYear}
+                    AND TO_CHAR(REGI_DATE, 'YYYYMM') &lt;= #{endYear}
+                </otherwise>
+            </choose>
+        </if>
+        <if test="proStateList != null and proStateList.size() > 0">
+            AND PRO_STATE IN
+            <foreach collection="proStateList" item="v" open="(" separator="," close=")">#{v}</foreach>
+        </if>
+        <if test="proStepList != null and proStepList.size() > 0">
+            AND PRO_STEP IN
+            <foreach collection="proStepList" item="v" open="(" separator="," close=")">#{v}</foreach>
+        </if>
+        <if test="infoMethodList != null and infoMethodList.size() > 0">
+            AND INFO_METHOD IN
+            <foreach collection="infoMethodList" item="v" open="(" separator="," close=")">#{v}</foreach>
+        </if>
+        <if test="bizSectionList != null and bizSectionList.size() > 0">
+            AND BIZ_SECTION IN
+            <foreach collection="bizSectionList" item="v" open="(" separator="," close=")">#{v}</foreach>
+        </if>
+        <if test="bizTypeList != null and bizTypeList.size() > 0">
+            AND BIZ_TYPE IN
+            <foreach collection="bizTypeList" item="v" open="(" separator="," close=")">#{v}</foreach>
+        </if>
+        <if test="bizFormList != null and bizFormList.size() > 0">
+            AND BIZ_FORM IN
+            <foreach collection="bizFormList" item="v" open="(" separator="," close=")">#{v}</foreach>
+        </if>
+        <if test="continentCode != null and continentCode != ''">
+            AND CONTINENT_CODE = #{continentCode}
+        </if>
+        <if test="nationCode != null and nationCode != ''">
+            AND NATION_CODE = #{nationCode}
+        </if>
+        GROUP BY
+            <choose>
+                <when test="yearmm == '1'">TO_CHAR(REGI_DATE, 'YYYY')</when>
+                <otherwise>TO_CHAR(REGI_DATE, 'YYYYMM')</otherwise>
+            </choose>
+            <if test="yAxis != null and yAxis != ''">
+                ,<choose>
+                    <when test="yAxis == '108'">PRO_STATE</when>
+                    <when test="yAxis == '109'">PRO_STEP</when>
+                    <when test="yAxis == '106'">CONTINENT_CODE</when>
+                    <when test="yAxis == '104'">INFO_METHOD</when>
+                    <when test="yAxis == '102'">BIZ_SECTION</when>
+                    <when test="yAxis == '101'">BIZ_TYPE</when>
+                    <when test="yAxis == '103'">BIZ_FORM</when>
+                </choose>
+            </if>
+            <if test="xAxis != null and xAxis != ''">
+                ,<choose>
+                    <when test="xAxis == '108'">PRO_STATE</when>
+                    <when test="xAxis == '109'">PRO_STEP</when>
+                    <when test="xAxis == '106'">CONTINENT_CODE</when>
+                    <when test="xAxis == '104'">INFO_METHOD</when>
+                    <when test="xAxis == '102'">BIZ_SECTION</when>
+                    <when test="xAxis == '101'">BIZ_TYPE</when>
+                    <when test="xAxis == '103'">BIZ_FORM</when>
+                </choose>
+            </if>
+        ORDER BY VDATE, Y_VALUE, X_VALUE
+    </select>
+
+</mapper>

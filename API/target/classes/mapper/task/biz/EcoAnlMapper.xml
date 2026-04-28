@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.koen.kopms_api.task.biz.dao.EcoAnlDao">
+
+    <!-- ================================================================= -->
+    <!-- [1] 경제성분석 목록 조회 (BIZ_ECO_ANL)                                -->
+    <!-- ================================================================= -->
+    <!-- energySrc: 에너지원 필터 (COM_CODE 105)                               -->
+    <!-- STAND_DATE: DATE → VARCHAR 변환 (YYYY-MM-DD)                        -->
+
+    <select id="selectEcoAnlList" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            ANL_SEQ,
+            BIZ_TITLE,
+            ENERGY_SRC,
+            TO_CHAR(STAND_DATE, 'YYYY-MM-DD') AS STAND_DATE,
+            TIC_ATR_ROI,
+            TIC_NPV_VAL,
+            TIC_BCR_DSC,
+            TIC_PBP_YRS,
+            EQT_ROE_FCF,
+            EQT_ROE_DIV,
+            EQT_NPV_VAL,
+            EQT_BCR_DSC,
+            EQT_PBP_YRS,
+            ATTACH_FILE_SEQ,
+            TO_CHAR(REGI_DATE,   'YYYY-MM-DD') AS REGI_DATE,
+            INWRITER_ID,
+            TO_CHAR(UPDATE_DATE, 'YYYY-MM-DD') AS UPDATE_DATE,
+            UPWRITER_ID
+        FROM BIZ_ECO_ANL
+        WHERE 1 = 1
+        <if test="energySrc != null and energySrc != ''">
+            AND ENERGY_SRC = #{energySrc}
+        </if>
+        <if test="bizTitle != null and bizTitle != ''">
+            AND BIZ_TITLE LIKE '%' || #{bizTitle} || '%'
+        </if>
+        ORDER BY ANL_SEQ DESC
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [2] 경제성분석 단건 조회                                               -->
+    <!-- ================================================================= -->
+
+    <select id="selectEcoAnlData" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            ANL_SEQ,
+            BIZ_TITLE,
+            ENERGY_SRC,
+            TO_CHAR(STAND_DATE, 'YYYY-MM-DD') AS STAND_DATE,
+            TIC_ATR_ROI,
+            TIC_NPV_VAL,
+            TIC_BCR_DSC,
+            TIC_PBP_YRS,
+            EQT_ROE_FCF,
+            EQT_ROE_DIV,
+            EQT_NPV_VAL,
+            EQT_BCR_DSC,
+            EQT_PBP_YRS,
+            ATTACH_FILE_SEQ,
+            TO_CHAR(REGI_DATE,   'YYYY-MM-DD') AS REGI_DATE,
+            INWRITER_ID,
+            TO_CHAR(UPDATE_DATE, 'YYYY-MM-DD') AS UPDATE_DATE,
+            UPWRITER_ID
+        FROM BIZ_ECO_ANL
+        WHERE ANL_SEQ = #{anlSeq}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [3] 경제성분석 등록                                                   -->
+    <!-- ================================================================= -->
+    <!-- ANL_SEQ: 시퀀스 없으므로 MAX+1 채번                                    -->
+    <!-- 저장 후 HISTORY 이력 적재 (insertEcoAnlHistory 함께 호출)               -->
+
+    <insert id="insertEcoAnl" parameterType="map">
+        <selectKey keyProperty="anlSeq" resultType="int" order="BEFORE">
+            SELECT NVL(MAX(ANL_SEQ), 0) + 1 FROM BIZ_ECO_ANL
+        </selectKey>
+        INSERT INTO BIZ_ECO_ANL (
+            ANL_SEQ,        BIZ_TITLE,      ENERGY_SRC,     STAND_DATE,
+            TIC_ATR_ROI,    TIC_NPV_VAL,    TIC_BCR_DSC,    TIC_PBP_YRS,
+            EQT_ROE_FCF,    EQT_ROE_DIV,    EQT_NPV_VAL,    EQT_BCR_DSC,    EQT_PBP_YRS,
+            ATTACH_FILE_SEQ,
+            REGI_DATE,      INWRITER_ID,    UPDATE_DATE,    UPWRITER_ID
+        ) VALUES (
+            #{anlSeq},
+            #{bizTitle},
+            #{energySrc},
+            <choose>
+                <when test="standDate != null and standDate != ''">TO_DATE(#{standDate}, 'YYYY-MM-DD')</when>
+                <otherwise>NULL</otherwise>
+            </choose>,
+            #{ticAtrRoi},   #{ticNpvVal},   #{ticBcrDsc},   #{ticPbpYrs},
+            #{eqtRoeFcf},   #{eqtRoeDiv},   #{eqtNpvVal},   #{eqtBcrDsc},   #{eqtPbpYrs},
+            #{attachFileSeq},
+            SYSDATE,        #{inwriterId},  SYSDATE,        #{inwriterId}
+        )
+    </insert>
+
+    <!-- ================================================================= -->
+    <!-- [4] 경제성분석 수정                                                   -->
+    <!-- ================================================================= -->
+
+    <update id="updateEcoAnl" parameterType="map">
+        UPDATE BIZ_ECO_ANL SET
+            BIZ_TITLE       = #{bizTitle},
+            ENERGY_SRC      = #{energySrc},
+            STAND_DATE      =
+            <choose>
+                <when test="standDate != null and standDate != ''">TO_DATE(#{standDate}, 'YYYY-MM-DD')</when>
+                <otherwise>NULL</otherwise>
+            </choose>,
+            TIC_ATR_ROI     = #{ticAtrRoi},
+            TIC_NPV_VAL     = #{ticNpvVal},
+            TIC_BCR_DSC     = #{ticBcrDsc},
+            TIC_PBP_YRS     = #{ticPbpYrs},
+            EQT_ROE_FCF     = #{eqtRoeFcf},
+            EQT_ROE_DIV     = #{eqtRoeDiv},
+            EQT_NPV_VAL     = #{eqtNpvVal},
+            EQT_BCR_DSC     = #{eqtBcrDsc},
+            EQT_PBP_YRS     = #{eqtPbpYrs},
+            ATTACH_FILE_SEQ = #{attachFileSeq},
+            UPDATE_DATE     = SYSDATE,
+            UPWRITER_ID     = #{upwriterId}
+        WHERE ANL_SEQ = #{anlSeq}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [5] 경제성분석 삭제                                                   -->
+    <!-- ================================================================= -->
+
+    <delete id="deleteEcoAnl" parameterType="map">
+        DELETE FROM BIZ_ECO_ANL
+        WHERE ANL_SEQ = #{anlSeq}
+    </delete>
+
+    <!-- ================================================================= -->
+    <!-- [6] 경제성분석 HISTORY 직접 입력 적재 (경제성 분석 화면 전용)               -->
+    <!-- ================================================================= -->
+    <!-- ANL_SEQ: BIZ_ECO_ANL_HISTORY 자체 MAX+1 채번                          -->
+    <!-- VERSION: 1 고정 (분석 실행 1건 = 1레코드)                               -->
+
+    <insert id="insertEcoAnlHistory" parameterType="map">
+        <selectKey keyProperty="anlSeq" resultType="int" order="BEFORE">
+            SELECT NVL(MAX(ANL_SEQ), 0) + 1 FROM BIZ_ECO_ANL_HISTORY
+        </selectKey>
+        INSERT INTO BIZ_ECO_ANL_HISTORY (
+            ANL_SEQ,        VERSION,
+            BIZ_TITLE,      ENERGY_SRC,     STAND_DATE,
+            TIC_ATR_ROI,    TIC_NPV_VAL,    TIC_BCR_DSC,    TIC_PBP_YRS,
+            EQT_ROE_FCF,    EQT_ROE_DIV,    EQT_NPV_VAL,    EQT_BCR_DSC,    EQT_PBP_YRS,
+            REGI_DATE,      INWRITER_ID,    UPDATE_DATE,    UPWRITER_ID
+        ) VALUES (
+            #{anlSeq},      1,
+            #{bizTitle},    #{energySrc},
+            <choose>
+                <when test="standDate != null and standDate != ''">TO_DATE(#{standDate}, 'YYYY-MM-DD')</when>
+                <otherwise>NULL</otherwise>
+            </choose>,
+            #{ticAtrRoi},   #{ticNpvVal},   #{ticBcrDsc},   #{ticPbpYrs},
+            #{eqtRoeFcf},   #{eqtRoeDiv},   #{eqtNpvVal},   #{eqtBcrDsc},   #{eqtPbpYrs},
+            SYSDATE,        #{inwriterId},  SYSDATE,        #{inwriterId}
+        )
+    </insert>
+
+    <!-- ================================================================= -->
+    <!-- [6-2] 경제성분석 HISTORY 직접 입력 목록 조회 (경제성 분석 화면 조회이력용)     -->
+    <!-- ================================================================= -->
+
+    <select id="selectEcoAnlHistoryDirectList" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            ANL_SEQ,
+            INWRITER_ID,
+            TO_CHAR(REGI_DATE, 'YYYY-MM-DD HH24:MI') AS REGI_DATE
+        FROM BIZ_ECO_ANL_HISTORY
+        WHERE VERSION = 1
+        <if test="energySrc != null and energySrc != ''">
+            AND ENERGY_SRC = #{energySrc}
+        </if>
+        ORDER BY ANL_SEQ DESC
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [7] 경제성분석 HISTORY 버전 목록 조회                                   -->
+    <!-- ================================================================= -->
+
+    <select id="selectEcoAnlHistoryList" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            ANL_SEQ,
+            VERSION,
+            BIZ_TITLE,
+            ENERGY_SRC,
+            TO_CHAR(STAND_DATE,  'YYYY-MM-DD') AS STAND_DATE,
+            TIC_ATR_ROI,    TIC_NPV_VAL,    TIC_BCR_DSC,    TIC_PBP_YRS,
+            EQT_ROE_FCF,    EQT_ROE_DIV,    EQT_NPV_VAL,    EQT_BCR_DSC,    EQT_PBP_YRS,
+            ATTACH_FILE_SEQ,
+            TO_CHAR(REGI_DATE,   'YYYY-MM-DD') AS REGI_DATE,
+            INWRITER_ID,
+            TO_CHAR(UPDATE_DATE, 'YYYY-MM-DD') AS UPDATE_DATE,
+            UPWRITER_ID
+        FROM BIZ_ECO_ANL_HISTORY
+        WHERE ANL_SEQ = #{anlSeq}
+        ORDER BY VERSION DESC
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [8] 경제성분석 HISTORY 버전별 단건 조회 (버전 선택 시 상세 표시용)          -->
+    <!-- ================================================================= -->
+
+    <select id="selectEcoAnlHistoryData" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            ANL_SEQ,
+            VERSION,
+            BIZ_TITLE,
+            ENERGY_SRC,
+            TO_CHAR(STAND_DATE,  'YYYY-MM-DD') AS STAND_DATE,
+            TIC_ATR_ROI,    TIC_NPV_VAL,    TIC_BCR_DSC,    TIC_PBP_YRS,
+            EQT_ROE_FCF,    EQT_ROE_DIV,    EQT_NPV_VAL,    EQT_BCR_DSC,    EQT_PBP_YRS,
+            ATTACH_FILE_SEQ,
+            TO_CHAR(REGI_DATE,   'YYYY-MM-DD') AS REGI_DATE,
+            INWRITER_ID,
+            TO_CHAR(UPDATE_DATE, 'YYYY-MM-DD') AS UPDATE_DATE,
+            UPWRITER_ID
+        FROM BIZ_ECO_ANL_HISTORY
+        WHERE ANL_SEQ = #{anlSeq}
+          AND VERSION = #{version}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [9] 경제성분석 HISTORY 삭제 (본 데이터 삭제 시 함께 삭제)                 -->
+    <!-- ================================================================= -->
+
+    <delete id="deleteEcoAnlHistory" parameterType="map">
+        DELETE FROM BIZ_ECO_ANL_HISTORY
+        WHERE ANL_SEQ = #{anlSeq}
+    </delete>
+
+</mapper>

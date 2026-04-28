@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.koen.kopms_api.task.overseas.dao.EmployeePoolDao">
+
+    <!-- ================================================================= -->
+    <!-- [1] 해외 SPC 인력 Pool 목록 조회 (EMPLOYEE_SPC)                     -->
+    <!-- ================================================================= -->
+    <!-- PERIOD: 파견기간 포맷 (MOVE_BGN_YMD ~ MOVE_END_YMD)               -->
+    <!-- 빈값/'-' 처리 포함                                                  -->
+
+    <select id="selectEmployeeSpcList" parameterType="map" resultType="CamelHashMap">
+        SELECT A.*,
+               DECODE(MOVE_BGN_YMD, '', '',
+                      DECODE(MOVE_BGN_YMD, '-', '-',
+                             MOVE_BGN_YMD || ' ~ ' || MOVE_END_YMD)) AS PERIOD
+        FROM EMPLOYEE_SPC A
+    </select>
+
+
+    <!-- ================================================================= -->
+    <!-- [2] 파견인원 목록 조회 (EMPLOYEE_SEND + DEPT_BM)                    -->
+    <!-- ================================================================= -->
+    <!-- GUBUN IN ('20','30'): 전출/파견 인원만                              -->
+    <!-- DEPT_BM 조인으로 현소속부서명 포함                                   -->
+
+    <select id="selectEmployeeSendList" parameterType="map" resultType="CamelHashMap">
+        SELECT Y.*
+        FROM (
+            SELECT RANK() OVER (ORDER BY GUBUN DESC, DEPT_NAME, JIKGUB_CD) AS RANK,
+                   A.ORG_NM,
+                   A.JIKGUN_NM,
+                   A.JIKGUB_NM,
+                   A.NAME,
+                   A.EMPNO,
+                   A.GUBUN,
+                   B.DEPT_NAME,
+                   A.MOVE_BGN_YMD,
+                   A.MOVE_END_YMD
+            FROM EMPLOYEE_SEND A, DEPT_BM B
+            WHERE A.GUBUN IN ('20', '30')
+              AND A.DEPTNO = B.DEPTNO
+        ) Y
+        ORDER BY RANK
+    </select>
+
+
+    <!-- ================================================================= -->
+    <!-- [3] 부서별 전체 인원 목록 (EMPLOYEE_POOL)                           -->
+    <!-- ================================================================= -->
+    <!-- 직급 약어: 시니어 → '시'+직군코드 1자리, 일반 → 직급명 첫 글자       -->
+
+    <select id="selectEmployeePoolByDept" parameterType="map" resultType="CamelHashMap">
+        SELECT ROWNUM AS RN, Y.*,
+               DECODE(SUBSTR(JIKGUB_NM, 1, 3), '시니어',
+                      '시' || SUBSTR(JIKGUB_NM, 5, 1),
+                      SUBSTR(JIKGUB_NM, 1, 1)) AS JIKGUB
+        FROM (
+            SELECT A.*, RANK() OVER (ORDER BY A.JIKGUB_CD ASC, A.NAME ASC) AS RANK
+            FROM EMPLOYEE_POOL A
+            WHERE DEPTNO = #{deptno}
+        ) Y
+        ORDER BY RANK
+    </select>
+
+
+    <!-- ================================================================= -->
+    <!-- [4] 부서별 전출/파견 인원 목록 (EMPLOYEE_POOL, GUBUN 20/30)          -->
+    <!-- ================================================================= -->
+
+    <select id="selectEmployeePoolSendByDept" parameterType="map" resultType="CamelHashMap">
+        SELECT ROWNUM AS RN, Y.*,
+               DECODE(SUBSTR(JIKGUB_NM, 1, 3), '시니어',
+                      '시' || SUBSTR(JIKGUB_NM, 5, 1),
+                      SUBSTR(JIKGUB_NM, 1, 1)) AS JIKGUB
+        FROM (
+            SELECT A.*, RANK() OVER (ORDER BY A.JIKGUB_CD ASC, A.NAME ASC) AS RANK
+            FROM EMPLOYEE_POOL A
+            WHERE DEPTNO = #{deptno}
+              AND GUBUN IN ('20', '30')
+        ) Y
+        ORDER BY RANK
+    </select>
+
+
+    <!-- ================================================================= -->
+    <!-- [5] 부서별 전체 인원수 피벗 (EMPLOYEE_POOL + DEPT_BM)               -->
+    <!-- ================================================================= -->
+    <!-- A0~A7: 1000대 부서, B0~B3: 2000대, C0~C4: 3000대, D0~D4: 4000대  -->
+    <!-- X0_SUM: 해당 그룹 합계, X1_SUM: 소속부서 합계 (본부 제외)           -->
+
+    <select id="selectEmployeeDeptCount" parameterType="map" resultType="CamelHashMap">
+        SELECT A0, A1, A2, A3, A4, A5, A6, A7,
+               (A0 + A1 + A2 + A3 + A4 + A5 + A6 + A7) AS A0_SUM,
+               (A1 + A2 + A3 + A4 + A5 + A6 + A7) AS A1_SUM,
+               B0, B1, B2, B3,
+               (B0 + B1 + B2 + B3) AS B0_SUM,
+               (B1 + B2 + B3) AS B1_SUM,
+               C0, C1, C2, C3, C4,
+               (C0 + C1 + C2 + C3 + C4) AS C0_SUM,
+               (C1 + C2 + C3 + C4) AS C1_SUM,
+               D0, D1, D2, D3, D4,
+               (D0 + D1 + D2 + D3 + D4) AS D0_SUM,
+               (D1 + D2 + D3 + D4) AS D1_SUM
+        FROM (
+            SELECT SUM(DECODE(A.DEPTNO, '1000', 1, 0)) AS A0,
+                   SUM(DECODE(A.DEPTNO, '1010', 1, 0)) AS A1,
+                   SUM(DECODE(A.DEPTNO, '1020', 1, 0)) AS A2,
+                   SUM(DECODE(A.DEPTNO, '1030', 1, 0)) AS A3,
+                   SUM(DECODE(A.DEPTNO, '1040', 1, 0)) AS A4,
+                   SUM(DECODE(A.DEPTNO, '1050', 1, 0)) AS A5,
+                   SUM(DECODE(A.DEPTNO, '1060', 1, 0)) AS A6,
+                   SUM(DECODE(A.DEPTNO, '1070', 1, 0)) AS A7,
+                   SUM(DECODE(A.DEPTNO, '2000', 1, 0)) AS B0,
+                   SUM(DECODE(A.DEPTNO, '2010', 1, 0)) AS B1,
+                   SUM(DECODE(A.DEPTNO, '2020', 1, 0)) AS B2,
+                   SUM(DECODE(A.DEPTNO, '2030', 1, 0)) AS B3,
+                   SUM(DECODE(A.DEPTNO, '3000', 1, 0)) AS C0,
+                   SUM(DECODE(A.DEPTNO, '3010', 1, 0)) AS C1,
+                   SUM(DECODE(A.DEPTNO, '3020', 1, 0)) AS C2,
+                   SUM(DECODE(A.DEPTNO, '3030', 1, 0)) AS C3,
+                   SUM(DECODE(A.DEPTNO, '3040', 1, 0)) AS C4,
+                   SUM(DECODE(A.DEPTNO, '4000', 1, 0)) AS D0,
+                   SUM(DECODE(A.DEPTNO, '4010', 1, 0)) AS D1,
+                   SUM(DECODE(A.DEPTNO, '4020', 1, 0)) AS D2,
+                   SUM(DECODE(A.DEPTNO, '4030', 1, 0)) AS D3,
+                   SUM(DECODE(A.DEPTNO, '4040', 1, 0)) AS D4
+            FROM EMPLOYEE_POOL A, DEPT_BM B
+            WHERE A.DEPTNO(+) = B.DEPTNO
+        )
+    </select>
+
+
+    <!-- ================================================================= -->
+    <!-- [6] 부서별 파견인원수 피벗 (EMPLOYEE_POOL, GUBUN 20/30)              -->
+    <!-- ================================================================= -->
+
+    <select id="selectEmployeeSendDeptCount" parameterType="map" resultType="CamelHashMap">
+        SELECT A0, A1, A2, A3, A4, A5, A6, A7,
+               (A0 + A1 + A2 + A3 + A4 + A5 + A6 + A7) AS A0_SUM,
+               (A1 + A2 + A3 + A4 + A5 + A6 + A7) AS A1_SUM,
+               B0, B1, B2, B3,
+               (B0 + B1 + B2 + B3) AS B0_SUM,
+               (B1 + B2 + B3) AS B1_SUM,
+               C0, C1, C2, C3, C4,
+               (C0 + C1 + C2 + C3 + C4) AS C0_SUM,
+               (C1 + C2 + C3 + C4) AS C1_SUM,
+               D0, D1, D2, D3, D4,
+               (D0 + D1 + D2 + D3 + D4) AS D0_SUM,
+               (D1 + D2 + D3 + D4) AS D1_SUM
+        FROM (
+            SELECT SUM(DECODE(A.DEPTNO, '1000', 1, 0)) AS A0,
+                   SUM(DECODE(A.DEPTNO, '1010', 1, 0)) AS A1,
+                   SUM(DECODE(A.DEPTNO, '1020', 1, 0)) AS A2,
+                   SUM(DECODE(A.DEPTNO, '1030', 1, 0)) AS A3,
+                   SUM(DECODE(A.DEPTNO, '1040', 1, 0)) AS A4,
+                   SUM(DECODE(A.DEPTNO, '1050', 1, 0)) AS A5,
+                   SUM(DECODE(A.DEPTNO, '1060', 1, 0)) AS A6,
+                   SUM(DECODE(A.DEPTNO, '1070', 1, 0)) AS A7,
+                   SUM(DECODE(A.DEPTNO, '2000', 1, 0)) AS B0,
+                   SUM(DECODE(A.DEPTNO, '2010', 1, 0)) AS B1,
+                   SUM(DECODE(A.DEPTNO, '2020', 1, 0)) AS B2,
+                   SUM(DECODE(A.DEPTNO, '2030', 1, 0)) AS B3,
+                   SUM(DECODE(A.DEPTNO, '3000', 1, 0)) AS C0,
+                   SUM(DECODE(A.DEPTNO, '3010', 1, 0)) AS C1,
+                   SUM(DECODE(A.DEPTNO, '3020', 1, 0)) AS C2,
+                   SUM(DECODE(A.DEPTNO, '3030', 1, 0)) AS C3,
+                   SUM(DECODE(A.DEPTNO, '3040', 1, 0)) AS C4,
+                   SUM(DECODE(A.DEPTNO, '4000', 1, 0)) AS D0,
+                   SUM(DECODE(A.DEPTNO, '4010', 1, 0)) AS D1,
+                   SUM(DECODE(A.DEPTNO, '4020', 1, 0)) AS D2,
+                   SUM(DECODE(A.DEPTNO, '4030', 1, 0)) AS D3,
+                   SUM(DECODE(A.DEPTNO, '4040', 1, 0)) AS D4
+            FROM EMPLOYEE_POOL A, DEPT_BM B
+            WHERE A.DEPTNO(+) = B.DEPTNO
+              AND GUBUN IN ('20', '30')
+        )
+    </select>
+
+
+    <!-- ================================================================= -->
+    <!-- [7] 인원 단건 조회 (EMPLOYEE_POOL)                                  -->
+    <!-- ================================================================= -->
+
+    <select id="selectEmployeeOne" parameterType="map" resultType="CamelHashMap">
+        SELECT DECODE(SUBSTR(A.JIKGUB_NM, 1, 3), '시니어',
+                      '시' || SUBSTR(A.JIKGUB_NM, 5, 1),
+                      SUBSTR(A.JIKGUB_NM, 1, 1)) AS JIKGUB,
+               A.*
+        FROM EMPLOYEE_POOL A
+        WHERE DEPTNO = #{deptno}
+          AND EMPNO = #{empno}
+    </select>
+
+
+    <!-- ================================================================= -->
+    <!-- [8] 인원 등록 (EMPLOYEE_POOL)                                       -->
+    <!-- ================================================================= -->
+    <!-- INSA_EMP_TBL@WEBADM: 외부 DB 링크 — 사번 기반 인사정보 자동 조회    -->
+
+    <insert id="insertEmployee" parameterType="map">
+        INSERT INTO EMPLOYEE_POOL (
+            EMPNO, DEPTNO, GUBUN, NAME, TITLE_CD, TITLE,
+            JIKGUB_CD, JIKGUB_NM, POS_CD, POS_NM, JIKGUN_CD, JIKGUN_NM,
+            TASK_INFO, GRADE, BOJIK_YMD, MOVE_BGN_YMD, MOVE_END_YMD,
+            ORG_CD, ORG_NM, FIRST_ORG, SECOND_ORG, THIRD_ORG, FOURTH_ORG, FIFTH_ORG,
+            FIRST_ORG_NM, SECOND_ORG_NM, THIRD_ORG_NM, FOURTH_ORG_NM, FIFTH_ORG_NM,
+            IPSA_YMD, JIKGUB_YMD,
+            CUR_ORG_CD, CUR_ORG_NM,
+            CUR_FIRST_ORG, CUR_SECOND_ORG, CUR_THIRD_ORG, CUR_FOURTH_ORG, CUR_FIFTH_ORG,
+            CUR_FIRST_ORG_NM, CUR_SECOND_ORG_NM, CUR_THIRD_ORG_NM, CUR_FOURTH_ORG_NM, CUR_FIFTH_ORG_NM,
+            REG_ID, REG_DATE
+        )
+        SELECT #{empno}, #{deptno}, #{gubun}, #{name},
+               #{titleCd},
+               (SELECT CODE_NAME FROM COM_CODE WHERE USE_YN = 'Y' AND CODE_GROUP = '166' AND CODE_VALUE = #{titleCd}),
+               JIKGUB_CD, JIKGUB_NM, POS_CD, POS_NM, JIKGUN_CD, JIKGUN_NM,
+               #{taskInfo}, #{grade}, BOJIK_YMD, #{moveBgnYmd}, #{moveEndYmd},
+               ORG_CD, ORG_NM, FIRST_ORG, SECOND_ORG, THIRD_ORG, FOURTH_ORG, FIFTH_ORG,
+               FIRST_ORG_NM, SECOND_ORG_NM, THIRD_ORG_NM, FOURTH_ORG_NM, FIFTH_ORG_NM,
+               IPSA_YMD, JIKGUB_YMD,
+               NEW_ORG_CD, NEW_ORG_NM,
+               NEW_FIRST_ORG, NEW_SECOND_ORG, NEW_THIRD_ORG, NEW_FOURTH_ORG, NEW_FIFTH_ORG,
+               NEW_FIRST_ORG_NM, NEW_SECOND_ORG_NM, NEW_THIRD_ORG_NM, NEW_FOURTH_ORG_NM, NEW_FIFTH_ORG_NM,
+               #{empId}, SYSDATE
+        FROM INSA_EMP_TBL@WEBADM
+        WHERE SABUN = #{empno}
+    </insert>
+
+
+    <!-- ================================================================= -->
+    <!-- [9] 외부/파견 인원 수정 (EMPLOYEE_POOL)                             -->
+    <!-- ================================================================= -->
+
+    <update id="updateEmployee" parameterType="map">
+        UPDATE EMPLOYEE_POOL SET
+            NAME         = #{name},
+            JIKGUB_NM    = #{jikgubNm},
+            TITLE_CD     = #{titleCd},
+            JIKGUN_NM    = #{jikgunNm},
+            POS_NM       = #{posNm},
+            IPSA_YMD     = #{ipsaYmd},
+            JIKGUB_YMD   = #{jikgubYmd},
+            BOJIK_YMD    = #{bojikYmd},
+            GRADE        = #{grade},
+            TASK_INFO    = #{taskInfo},
+            GUBUN        = #{gubun},
+            CUR_ORG_NM   = #{curOrgNm},
+            MOVE_BGN_YMD = #{moveBgnYmd},
+            MOVE_END_YMD = #{moveEndYmd},
+            UPD_DATE     = SYSDATE,
+            UPD_ID       = #{empId}
+        WHERE EMPNO = #{empno}
+    </update>
+
+
+    <!-- ================================================================= -->
+    <!-- [10] 인원 중복 확인 (EMPLOYEE_POOL)                                 -->
+    <!-- ================================================================= -->
+
+    <select id="checkEmployeeExists" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM EMPLOYEE_POOL
+        WHERE DEPTNO = #{deptno}
+          AND EMPNO = #{empno}
+    </select>
+
+</mapper>

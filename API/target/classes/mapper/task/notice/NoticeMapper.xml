@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.koen.kopms_api.task.notice.dao.NoticeDao">
+
+    <!-- 공지사항 목록 (페이징) -->
+    <select id="selectNoticeList" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT ROWNUM AS NO
+             , NOTICE_SEQ
+             , TITLE
+             , CNT
+             , EMP_ID
+             , EMP_NAME
+             , TO_CHAR(REGI_DATE, 'YYYY-MM-DD') AS REGI_DATE
+             , MAX_CNT
+             , CEIL(MAX_CNT / #{pagePerRow}) AS TOTAL_PAGE
+          FROM (
+              SELECT N.NOTICE_SEQ
+                   , N.TITLE
+                   , N.CNT
+                   , N.EMP_ID
+                   , N.EMP_NAME
+                   , N.REGI_DATE
+                   , COUNT(*) OVER() AS MAX_CNT
+                FROM PDNM.NOTICE_BOARD N
+               WHERE 1 = 1
+              <if test="title != null and title != ''">
+                  AND N.TITLE LIKE '%' || #{title} || '%'
+              </if>
+              <if test="empName != null and empName != ''">
+                  AND N.EMP_NAME LIKE '%' || #{empName} || '%'
+              </if>
+              <if test="startDate != null and startDate != ''">
+                  AND N.REGI_DATE &gt;= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+              </if>
+              <if test="endDate != null and endDate != ''">
+                  AND N.REGI_DATE &lt;= TO_DATE(#{endDate}, 'YYYY-MM-DD') + 0.99999
+              </if>
+               ORDER BY N.NOTICE_SEQ DESC
+          )
+        OFFSET (#{pageNum} - 1) * #{pagePerRow} ROWS
+        FETCH NEXT #{pagePerRow} ROWS ONLY
+    </select>
+
+    <!-- 공지사항 상세 -->
+    <select id="selectNoticeDetail" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT NOTICE_SEQ
+             , TITLE
+             , CONTENTS
+             , CNT
+             , EMP_ID
+             , EMP_NAME
+             , TO_CHAR(REGI_DATE, 'YYYY-MM-DD') AS REGI_DATE
+          FROM PDNM.NOTICE_BOARD
+         WHERE NOTICE_SEQ = #{noticeSeq}
+    </select>
+
+    <!-- 조회수 증가 -->
+    <update id="updateNoticeCnt" parameterType="HashMap">
+        UPDATE PDNM.NOTICE_BOARD
+           SET CNT = NVL(CNT, 0) + 1
+         WHERE NOTICE_SEQ = #{noticeSeq}
+    </update>
+
+    <!-- 공지사항 등록 -->
+    <insert id="insertNotice" parameterType="HashMap">
+        INSERT INTO PDNM.NOTICE_BOARD (
+              NOTICE_SEQ
+            , TITLE
+            , CONTENTS
+            , CNT
+            , EMP_ID
+            , EMP_NAME
+            , REGI_DATE
+        ) VALUES (
+              NOTICE_SEQ.NEXTVAL
+            , #{title}
+            , #{contents}
+            , 0
+            , #{empId}
+            , #{empName}
+            , SYSDATE
+        )
+    </insert>
+
+    <!-- 공지사항 수정 (TITLE/CONTENTS만) -->
+    <update id="updateNotice" parameterType="HashMap">
+        UPDATE PDNM.NOTICE_BOARD
+           SET TITLE    = #{title}
+             , CONTENTS = #{contents}
+         WHERE NOTICE_SEQ = #{noticeSeq}
+    </update>
+
+    <!-- 공지사항 삭제 (물리 삭제) -->
+    <delete id="deleteNotice" parameterType="HashMap">
+        DELETE FROM PDNM.NOTICE_BOARD
+         WHERE NOTICE_SEQ = #{noticeSeq}
+    </delete>
+
+</mapper>

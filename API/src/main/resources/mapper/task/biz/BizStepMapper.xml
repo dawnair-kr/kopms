@@ -1,0 +1,946 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.koen.kopms_api.task.biz.dao.BizDao">
+
+    <!-- ================================================================= -->
+    <!-- S/D 단계별 데이터 조회                                               -->
+    <!-- ================================================================= -->
+
+    <!-- ================================================================= -->
+    <!-- [1] S1010 조회 (사업발굴 기본정보)                                   -->
+    <!-- ================================================================= -->
+    <!-- NVL 처리: INFO_NAME, INFO_DEPT 등 담당자 정보가 null일 경우 빈 문자열 반환 -->
+    <!-- → 프론트에서 null 체크 없이 직접 사용 가능                            -->
+
+    <select id="selectS1010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          GONGGO_NUM,         GONGGO_NAME,        GONGGO_ORG,
+            NVL(INFO_NAME, '')  AS INFO_NAME,       NVL(INFO_DEPT, '')  AS INFO_DEPT,       NVL(INFO_POS, '')   AS INFO_POS,
+            NVL(INFO_ADDRESS,'') AS INFO_ADDRESS,   NVL(INFO_TEL, '')   AS INFO_TEL,        NVL(INFO_HP, '')    AS INFO_HP,         NVL(INFO_FAX, '')   AS INFO_FAX,
+            ATTACH_FILE_SEQ_1,  INFO_ETC,           BIZ_CONTENTS,       BIZ_CONDITION,      BIZ_COM,
+            BIZ_MONEY,          BIZ_METHOD,         BIZ_DATE,           WORK_PERIOD,        POWER_VOLUME,
+            HO_GISU,            USE_DATE,           START_DATE,         ALL_MONEY,          CONTRACT_DATE,
+            DEMAND_DEPT,        POWER_INFO,         OIL_CON,            OIL_DATE,           OIL_CONDITION,
+            OIL_MOVE,           ORDER_COMPANY,      ORDER_OWNER,        ORDER_ADDR,         ORDER_HOMPAGE,
+            ORDER_TEL,          ORDER_HP,           ORDER_FAX,          ORDER_DEPT,         ORDER_POS,
+            ORDER_NAME,         PACT_SELECT,        ATTACH_FILE_SEQ_2,  TEASER_SELECT,      ATTACH_FILE_SEQ_3,
+            LOI_SELECT,         ATTACH_FILE_SEQ_4,  CA_SELECT,          ATTACH_FILE_SEQ_5,  APPROVAL_LINK,
+            AMT_UNIT,			POWER_UNIT
+        FROM S1010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [2] S2010 조회 (사업성 검토)                                         -->
+    <!-- ================================================================= -->
+
+    <select id="selectS2010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          INFO_SUMMARY,       BASIC_TOTAL_SUM,    BIZ_TRUST_SCORE,    BIZ_POSS_SCORE,
+            BIZ_CHECK_SCORE,    BIZ_RATIO_SCORE,    TOTAL_SELECT,       TOTAL_TXT,          BASIC_RE_LINK,
+            BASIC_RESULT,       ATTACH_FILE_SEQ,    S2_STATE,           S2_REGI_DATE,       S2_UPDATE_DATE,
+            S2_FINISH_DATE,     PRO_STATE,          BIZ_OMIT_REASON,    TRUST_SCORE,        TRUST_SCORE_SUM,
+            POSS_SCORE,         POSS_SCORE_SUM,     SUM_RATIO,          APPROVAL_LINK,      RESULT_REGI_DATE,
+            RESULT_FINISH_DATE, MIKEP_STATE,        MIKEP_STATE1,       APPROVAL_LINK1,     INWRITER_ID,
+            UPWRITER_ID,        MIKEP_DEL_STATE,    APPROVAL_DEL_LINK,  MIKEP_DOC_NO
+        FROM S2010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [3] S3010 조회 (사업추진보고)                                         -->
+    <!-- ================================================================= -->
+
+    <select id="selectS3010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          BIZ_SUMMARY,        REPORT_METHOD,      REPORT_CONTENTS,    BIZ_OMIT_REASON,
+            BIZ_STATE,          BIZ_REGI_DATE,      BIZ_UPDATE_DATE,    BIZ_FINISH_DATE,    ATTACH_FILE_SEQ_1,
+            APPROVAL_LINK,      BIZ_RESULT_SUMMARY, BIZ_CON_RESULT,     RESULT_STATE,       RESULT_REGI_DATE,
+            RESULT_UPDATE_DATE, RESULT_APP_DATE,    RESULT_FINISH_DATE, PRO_SUMMARY,        PRO_STATE,
+            PRO_REGI_DATE,      PRO_UPDATE_DATE,    PRO_FINISH_DATE,    ATTACH_FILE_SEQ_2,  RISK_CHEK_METHOD,
+            CHECK_METHOD,       MEETING_TIME,       MEETING_PLACE,      MIKEP_STATE,        MIKEP_STATE1,
+            MIKEP_STATE2,       APPROVAL_LINK1,     APPROVAL_LINK2,     MIKEP_DOC_NO,       MIKEP_DEL_STATE,
+            APPROVAL_DEL_LINK,  INWRITER_ID,        UPWRITER_ID
+        FROM S3010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [4] S4010 조회 (리스크 검토)                                         -->
+    <!-- ================================================================= -->
+
+    <select id="selectS4010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          BIZ_REASON,         BIZ_SCORE,          APPRAISAL_RESULT,   ATTACH_FILE_SEQ,
+            BIZ_CHECK_SCORE,    BIZ_RATIO_SCORE,    BIZ_SUM,            APPRAISAL_LINK,     BIZ_OMIT_REASON,
+            S4_STATE,           S4_REGI_DATE,       S4_UPDATE_DATE,     S4_FINISH_DATE,     PRO_STATE,
+            RESULT_FINISH_DATE, MIKEP_DOC_NO,       MIKEP_DEL_STATE,    APPROVAL_DEL_LINK,  INWRITER_ID,
+            UPWRITER_ID
+        FROM S4010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [5] S5010 조회 (사업선정)                                           -->
+    <!-- ================================================================= -->
+
+    <select id="selectS5010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          SELECT_SUMMARY,     SELECT_METHOD,      SELECT_CONTENTS,    BIZ_OMIT_REASON,
+            SELECT_STATE,       SELECT_REGI_DATE,   SELECT_UPDATE_DATE, SELECT_FINISH_DATE, ATTACH_FILE_SEQ_1,
+            ATTACH_FILE_SEQ_2,  RESULT_SUMMARY,     CONV_RESULT,        RESULT_STATE,       RESULT_REGI_DATE,
+            RESULT_UPDATE_DATE, RESULT_APP_DATE,    RESULT_FINISH_DATE, PRO_STATE,          CHECK_METHOD,
+            MEETING_TIME,       MEETING_PLACE,      APPROVAL_LINK,      APPROVAL_LINK1,     APPROVAL_LINK2,
+            MIKEP_STATE,        MIKEP_STATE1,       MIKEP_STATE2,       MIKEP_DOC_NO,       MIKEP_DEL_STATE,
+            APPROVAL_DEL_LINK,  INWRITER_ID,        UPWRITER_ID
+        FROM S5010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [6] D1010 조회 (TF 구성)                                           -->
+    <!-- ================================================================= -->
+
+	<select id="selectD1010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          TF_SUMMARY,         REPORT_METHOD,      REPORT_CONTENTS,    BIZ_SUMMARY,
+            TF_STATE,           TF_REGI_DATE,       TF_UPDATE_DATE,     TF_FINISH_DATE,     BIZ_STATE,
+            BIZ_REGI_DATE,      BIZ_UPDATE_DATE,    BIZ_FINISH_DATE,    RESULT_FINISH_DATE, ATTACH_FILE_SEQ_1,
+            ATTACH_FILE_SEQ_2,  PRO_STATE,          BIZ_OMIT_REASON,    MEETING_TIME,       MEETING_PLACE,
+            MIKEP_STATE1,       APPROVAL_LINK1,     MIKEP_STATE2,       APPROVAL_LINK2,     MIKEP_DOC_NO,
+            MIKEP_DEL_STATE,    APPROVAL_DEL_LINK,  INWRITER_ID,        UPWRITER_ID
+        FROM D1010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [7] D2010 조회 (사업개발계획)                                        -->
+    <!-- ================================================================= -->
+
+	<select id="selectD2010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          D2_SUMMARY,         ATTACH_FILE_SEQ,    D2_STATE,           D2_REGI_DATE,
+            D2_UPDATE_DATE,     D2_FINISH_DATE,     PRO_STATE,          BIZ_OMIT_REASON,    RESULT_FINISH_DATE,
+            MIKEP_DOC_NO,       MIKEP_DEL_STATE,    APPROVAL_DEL_LINK,  INWRITER_ID,        UPWRITER_ID
+        FROM D2010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [8] D3010 조회 (리스크 검토)                                         -->
+    <!-- ================================================================= -->
+
+    <select id="selectD3010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          RISK_SUMMARY,       RISK_METHOD,        RISK_CONTENTS,      RISK_STATE,
+            RISK_REGI_DATE,     RISK_UPDATE_DATE,   RISK_FINISH_DATE,   RISK_RESULT_SUMMARY, RISK_SUM,
+            STANDARD_RATE,      RISK_MEET_RESULT,   ATTACH_FILE_SEQ_1,  ATTACH_FILE_SEQ_2,  RESULT_STATE,
+            RESULT_REGI_DATE,   RESULT_UPDATE_DATE, RESULT_FINISH_DATE, PRO_STATE,          RISK_CHECK_METHOD,
+            BIZ_OMIT_REASON,    MEETING_TIME,       MEETING_PLACE,      APPROVAL_LINK1,     APPROVAL_LINK2,
+            MIKEP_STATE1,       MIKEP_STATE2,       MIKEP_DOC_NO,       MIKEP_DEL_STATE,    APPROVAL_DEL_LINK,
+            INWRITER_ID,        UPWRITER_ID
+        FROM D3010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [9] D3020 조회 (리스크 관리자 검토 — D35 단계)                       -->
+    <!-- ================================================================= -->
+
+    <select id="selectD3020Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          RISK_MANAGER_SUMMARY, RISK_MANAGER_METHOD, RISK_MANAGER_CONTENTS,
+            RISK_MANAGER_STATE, RISK_MANAGER_REGI_DATE, RISK_MANAGER_UPDATE_DATE, RISK_MANAGER_FINISH_DATE,
+            MANAGER_RESULT_SUMMARY, MANAGER_APP_RESULT, ATTACH_FILE_SEQ_1, ATTACH_FILE_SEQ_2,
+            MANAGER_STATE,      MANAGER_REGI_DATE,  MANAGER_UPDATE_DATE,
+            APPROVAL_REGI_DATE, APPROVAL_FINISH_DATE, APPROVAL_LINK,
+            PRO_STATE,          BIZ_OMIT_REASON,    MEETING_TIME,       MEETING_PLACE,
+            CHECK_METHOD,       RESULT_REGI_DATE,   RESULT_FINISH_DATE,
+            MIKEP_STATE,        MIKEP_STATE1,       MIKEP_STATE2,       MIKEP_DOC_NO,
+            APPROVAL_LINK1,     APPROVAL_LINK2,     MIKEP_DEL_STATE,    APPROVAL_DEL_LINK,
+            INWRITER_ID,        UPWRITER_ID
+        FROM D3020
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [10] D4010 조회 (입찰/제안)                                          -->
+    <!-- ================================================================= -->
+
+    <select id="selectD4010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          TENDER_SUMMARY,     ATTACH_FILE_SEQ_1,  APPROVAL_LINK,
+            TENDER_REGI_DATE,   TENDER_UPDATE_DATE, RESULT_REGI_DATE,   RESULT_FINISH_DATE,
+            TENDER_STATE,       SUBMIT_SUMMARY,     ATTACH_FILE_SEQ_2,  SUBMIT_REGI_DATE,
+            SUBMIT_UPDATE_DATE, SUBMIT_FINISH_DATE, SUBMIT_STATE,       PRO_STATE,
+            BIZ_OMIT_REASON,    MIKEP_STATE,        MIKEP_STATE1,       APPROVAL_LINK1,
+            MIKEP_STATE2,       APPROVAL_LINK2,     MIKEP_DEL_STATE,    APPROVAL_DEL_LINK,
+            MIKEP_DOC_NO,       INWRITER_ID,        UPWRITER_ID
+        FROM D4010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [11] D5010 조회 (협상/낙찰)                                          -->
+    <!-- ================================================================= -->
+
+    <select id="selectD5010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          MANAGER_SUMMARY,    ATTACH_FILE_SEQ_1,  APPROVAL_LINK,
+            MANAGER_REGI_DATE,  MANAGER_UPDATE_DATE, MANAGER_STATE,      MANAGER_FINISH_DATE,
+            SUCCESS_SUMMARY,    SUCCESS_RESULT,     ATTACH_FILE_SEQ_2,  SUCCESS_REGI_DATE,
+            SUCCESS_UPDATE_DATE, SUCCESS_FINISH_DATE, SUCCESS_STATE,     PRO_STATE,
+            BIZ_OMIT_REASON,    MIKEP_STATE1,       APPROVAL_LINK1,     RESULT_FINISH_DATE,
+            MIKEP_DEL_STATE,    APPROVAL_DEL_LINK,  MIKEP_DOC_NO,       INWRITER_ID,
+            UPWRITER_ID
+        FROM D5010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [12] D6010 조회 (계약)                                              -->
+    <!-- ================================================================= -->
+
+    <select id="selectD6010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          MANAGER_SUMMARY,    ATTACH_FILE_SEQ_1,  APPROVAL_LINK,
+            MANAGER_REGI_DATE,  MANAGER_UPDATE_DATE, MANAGER_STATE,      MANAGER_FINISH_DATE,
+            SUBMIT_SUMMARY,     ATTACH_FILE_SEQ_2,  SUBMIT_REGI_DATE,   SUBMIT_UPDATE_DATE,
+            SUBMIT_FINISH_DATE, SUBMIT_STATE,       PRO_STATE,          BIZ_OMIT_REASON,
+            MIKEP_STATE1,       APPROVAL_LINK1,     RESULT_FINISH_DATE, MIKEP_DEL_STATE,
+            APPROVAL_DEL_LINK,  MIKEP_DOC_NO,       INWRITER_ID,        UPWRITER_ID
+        FROM D6010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [13] D7010 조회 (사업종결)                                           -->
+    <!-- ================================================================= -->
+
+    <select id="selectD7010Data" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,          CONTRACT_SUMMARY,   ATTACH_FILE_SEQ,    CONTRACT_STATE,     CONTRACT_REGI_DATE,
+            CONTRACT_UPDATE_DATE, CONTRACT_FINISH_DATE, PRO_STATE,      BIZ_OMIT_REASON,    RESULT_FINISH_DATE,
+            MIKEP_DOC_NO,       MIKEP_DEL_STATE,    APPROVAL_DEL_LINK,  INWRITER_ID,        UPWRITER_ID
+        FROM D7010
+        WHERE MASTER_NO = #{masterNo}
+    </select>
+
+    <!-- ================================================================= -->
+    <!-- [14] 컨소시엄 조회                                                   -->
+    <!-- ================================================================= -->
+    <!-- ORDER BY ORDER_NO: 프론트에서 추가한 순서 유지                        -->
+
+    <select id="selectConsortiumList" parameterType="map" resultType="CamelHashMap">
+        SELECT
+            MASTER_NO,
+            ORDER_NO,
+            COMPANY_NAME,
+            CEO_NAME,
+            COM_ADDR,
+            COM_HOMEPAGE,
+            COM_TEL,
+            COM_HP,
+            COM_FAX,
+            BIZ_FIELD,
+            BIZ_STAKE
+        FROM S1010_CONSORTIUM
+        WHERE MASTER_NO = #{masterNo}
+        ORDER BY ORDER_NO ASC
+    </select>
+
+
+    <!-- ================================================================= -->
+    <!-- S/D 단계별 데이터 저장                                               -->
+    <!-- ================================================================= -->
+
+    <!-- ================================================================= -->
+    <!-- [15] S1010 저장 (사업발굴 기본정보)                                   -->
+    <!-- ================================================================= -->
+    <!-- REGI_DATE: 최초 등록 시 SYSDATE로 고정 (이후 수정 시 변경되지 않음)     -->
+    <!-- informants/order 다중행 데이터: 서비스에서 CSV로 변환 후 단일 컬럼 저장  -->
+
+    <insert id="insertS1010" parameterType="map">
+        INSERT INTO S1010 (
+            MASTER_NO,          GONGGO_NUM,         GONGGO_NAME,        GONGGO_ORG,         INFO_NAME,
+            INFO_ADDRESS,       INFO_TEL,           INFO_HP,            INFO_FAX,           ATTACH_FILE_SEQ_1,
+            INFO_ETC,           BIZ_CONTENTS,       BIZ_WORK,           BIZ_MONEY,          BIZ_DATE,
+            ORDER_COMPANY,      ORDER_OWNER,        ORDER_ADDR,         ORDER_HOMPAGE,      ORDER_DEPT,
+            ORDER_POS,          ORDER_NAME,         ORDER_TEL,          ORDER_HP,           ORDER_FAX,
+            BIZ_METHOD,         POWER_VOLUME,       HO_GISU,            WORK_PERIOD,        BIZ_COM,
+            USE_DATE,           START_DATE,         ALL_MONEY,          CONTRACT_DATE,      DEMAND_DEPT,
+            POWER_INFO,         OIL_CON,            OIL_DATE,           OIL_CONDITION,      OIL_MOVE,
+            PACT_SELECT,        ATTACH_FILE_SEQ_2,  TEASER_SELECT,      ATTACH_FILE_SEQ_3,  LOI_SELECT,
+            ATTACH_FILE_SEQ_4,  PRO_STATE,          REGI_DATE,          UPDATE_DATE,        FINISH_DATE,
+            CA_SELECT,          ATTACH_FILE_SEQ_5,  APPROVAL_LINK,      RESULT_REGI_DATE,   RESULT_FINISH_DATE,
+            S1_STATE,           BIZ_OMIT_REASON,    MINE_STATE,         MINE_MASTER,        MINE_TOTAL,
+            MINE_OUTPUT,        MINE_STANDARD,      MINE_PORT,          MINE_DEV,           PRECOD,
+            POSTCOD,            MIKEP_STATE,        INFO_DEPT,          INFO_POS,           MIKEP_STATE1,
+            APPROVAL_LINK1,     INWRITER_ID,        UPWRITER_ID,        MIKEP_DOC_NO,       BIZ_CONDITION,
+            AMT_UNIT,			POWER_UNIT
+        ) VALUES (
+            #{masterNo},        #{gonggoNum},       #{gonggoName},      #{gonggoOrg},       #{infoName},
+            #{infoAddress},     #{infoTel},         #{infoHp},          #{infoFax},         #{attachFileSeq1},
+            #{infoEtc},         #{bizContents},     #{bizWork},         #{bizMoney},        #{bizDate},
+            #{orderCompany},    #{orderOwner},      #{orderAddr},       #{orderHompage},    #{orderDept},
+            #{orderPos},        #{orderName},       #{orderTel},        #{orderHp},         #{orderFax},
+            #{bizMethod},       #{powerVolume},     #{hoGisu},          #{workPeriod},      #{bizCom},
+            #{useDate},         #{startDate},       #{allMoney},        #{contractDate},    #{demandDept},
+            #{powerInfo},       #{oilCon},          #{oilDate},         #{oilCondition},    #{oilMove},
+            #{pactSelect},      #{attachFileSeq2},  #{teaserSelect},    #{attachFileSeq3},  #{loiSelect},
+            #{attachFileSeq4},  #{proState},        SYSDATE,            #{updateDate},      #{finishDate},
+            #{caSelect},        #{attachFileSeq5},  #{approvalLink},    #{resultRegiDate},  #{resultFinishDate},
+            #{s1State},         #{bizOmitReason},   #{mineState},       #{mineMaster},      #{mineTotal},
+            #{mineOutput},      #{mineStandard},    #{minePort},        #{mineDev},         #{precod},
+            #{postcod},         #{mikepState},      #{infoDept},        #{infoPos},         #{mikepState1},
+            #{approvalLink1},   #{inwriterId},      #{upwriterId},      #{mikepDocNo},      #{bizCondition},
+            #{amtUnit},			#{powerUnit}
+        )
+    </insert>
+
+    <!-- INWRITER_ID, REGI_DATE는 수정 대상 아님 — 최초 등록자/등록일 보존 -->
+    <update id="updateS1010" parameterType="map">
+        UPDATE S1010
+           SET GONGGO_NUM        = #{gonggoNum},       GONGGO_NAME       = #{gonggoName},      GONGGO_ORG        = #{gonggoOrg},
+               INFO_NAME         = #{infoName},        INFO_ADDRESS      = #{infoAddress},     INFO_TEL          = #{infoTel},
+               INFO_HP           = #{infoHp},          INFO_FAX          = #{infoFax},         ATTACH_FILE_SEQ_1 = #{attachFileSeq1},
+               INFO_ETC          = #{infoEtc},         BIZ_CONTENTS      = #{bizContents},     BIZ_WORK          = #{bizWork},
+               BIZ_MONEY         = #{bizMoney},        BIZ_DATE          = #{bizDate},         ORDER_COMPANY     = #{orderCompany},
+               ORDER_OWNER       = #{orderOwner},      ORDER_ADDR        = #{orderAddr},       ORDER_HOMPAGE     = #{orderHompage},
+               ORDER_DEPT        = #{orderDept},       ORDER_POS         = #{orderPos},        ORDER_NAME        = #{orderName},
+               ORDER_TEL         = #{orderTel},        ORDER_HP          = #{orderHp},         ORDER_FAX         = #{orderFax},
+               BIZ_METHOD        = #{bizMethod},       POWER_VOLUME      = #{powerVolume},     HO_GISU           = #{hoGisu},
+               WORK_PERIOD       = #{workPeriod},      BIZ_COM           = #{bizCom},          CONTRACT_DATE     = #{contractDate},
+               DEMAND_DEPT       = #{demandDept},      POWER_INFO        = #{powerInfo},       OIL_CON           = #{oilCon},
+               OIL_DATE          = #{oilDate},         OIL_CONDITION     = #{oilCondition},    OIL_MOVE          = #{oilMove},
+               PACT_SELECT       = #{pactSelect},      ATTACH_FILE_SEQ_2 = #{attachFileSeq2},  TEASER_SELECT     = #{teaserSelect},
+               ATTACH_FILE_SEQ_3 = #{attachFileSeq3},  LOI_SELECT        = #{loiSelect},       ATTACH_FILE_SEQ_4 = #{attachFileSeq4},
+               CA_SELECT         = #{caSelect},        ATTACH_FILE_SEQ_5 = #{attachFileSeq5},  INFO_DEPT         = #{infoDept},
+               INFO_POS          = #{infoPos},         UPWRITER_ID       = #{upwriterId},      BIZ_CONDITION     = #{bizCondition},
+               AMT_UNIT          = #{amtUnit},         POWER_UNIT        = #{powerUnit},
+               UPDATE_DATE       = SYSDATE
+         WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [16] S1010_HISTORY 저장 (변경 전 스냅샷 보존)                        -->
+    <!-- ================================================================= -->
+    <!-- bizInfo 변경 시 서비스에서 oldBizInfo를 전달 → 이력 테이블에 저장       -->
+    <!-- VERSION: 서비스에서 getNextHistoryVersion()으로 채번 후 주입           -->
+    <!-- S1010과 컬럼 구조 동일 + VERSION 컬럼 추가                            -->
+
+    <insert id="insertS1010History" parameterType="map">
+        INSERT INTO S1010_HISTORY (
+            MASTER_NO,          VERSION,			GONGGO_NUM,         GONGGO_NAME,        GONGGO_ORG,         INFO_NAME,
+            INFO_ADDRESS,       INFO_TEL,           INFO_HP,            INFO_FAX,           ATTACH_FILE_SEQ_1,
+            INFO_ETC,           BIZ_CONTENTS,       BIZ_WORK,           BIZ_MONEY,          BIZ_DATE,
+            ORDER_COMPANY,      ORDER_OWNER,        ORDER_ADDR,         ORDER_HOMPAGE,      ORDER_DEPT,
+            ORDER_POS,          ORDER_NAME,         ORDER_TEL,          ORDER_HP,           ORDER_FAX,
+            BIZ_METHOD,         POWER_VOLUME,       HO_GISU,            WORK_PERIOD,        BIZ_COM,
+            USE_DATE,           START_DATE,         ALL_MONEY,          CONTRACT_DATE,      DEMAND_DEPT,
+            POWER_INFO,         OIL_CON,            OIL_DATE,           OIL_CONDITION,      OIL_MOVE,
+            PACT_SELECT,        ATTACH_FILE_SEQ_2,  TEASER_SELECT,      ATTACH_FILE_SEQ_3,  LOI_SELECT,
+            ATTACH_FILE_SEQ_4,  PRO_STATE,          REGI_DATE,          UPDATE_DATE,        FINISH_DATE,
+            CA_SELECT,          ATTACH_FILE_SEQ_5,  APPROVAL_LINK,      RESULT_REGI_DATE,   RESULT_FINISH_DATE,
+            S1_STATE,           BIZ_OMIT_REASON,    MINE_STATE,         MINE_MASTER,        MINE_TOTAL,
+            MINE_OUTPUT,        MINE_STANDARD,      MINE_PORT,          MINE_DEV,           PRECOD,
+            POSTCOD,            MIKEP_STATE,        INFO_DEPT,          INFO_POS,           MIKEP_STATE1,
+            APPROVAL_LINK1,     INWRITER_ID,        UPWRITER_ID,        MIKEP_DOC_NO,       BIZ_CONDITION,
+            AMT_UNIT,			POWER_UNIT
+        ) VALUES (
+            #{masterNo},        #{version}, 		#{gonggoNum},       #{gonggoName},      #{gonggoOrg},       #{infoName},
+            #{infoAddress},     #{infoTel},         #{infoHp},          #{infoFax},         #{attachFileSeq1},
+            #{infoEtc},         #{bizContents},     #{bizWork},         #{bizMoney},        #{bizDate},
+            #{orderCompany},    #{orderOwner},      #{orderAddr},       #{orderHompage},    #{orderDept},
+            #{orderPos},        #{orderName},       #{orderTel},        #{orderHp},         #{orderFax},
+            #{bizMethod},       #{powerVolume},     #{hoGisu},          #{workPeriod},      #{bizCom},
+            #{useDate},         #{startDate},       #{allMoney},        #{contractDate},    #{demandDept},
+            #{powerInfo},       #{oilCon},          #{oilDate},         #{oilCondition},    #{oilMove},
+            #{pactSelect},      #{attachFileSeq2},  #{teaserSelect},    #{attachFileSeq3},  #{loiSelect},
+            #{attachFileSeq4},  #{proState},        SYSDATE,            #{updateDate},      #{finishDate},
+            #{caSelect},        #{attachFileSeq5},  #{approvalLink},    #{resultRegiDate},  #{resultFinishDate},
+            #{s1State},         #{bizOmitReason},   #{mineState},       #{mineMaster},      #{mineTotal},
+            #{mineOutput},      #{mineStandard},    #{minePort},        #{mineDev},         #{precod},
+            #{postcod},         #{mikepState},      #{infoDept},        #{infoPos},         #{mikepState1},
+            #{approvalLink1},   #{inwriterId},      #{upwriterId},      #{mikepDocNo},      #{bizCondition},
+            #{amtUnit},			#{powerUnit}
+        )
+    </insert>
+
+    <!-- ================================================================= -->
+    <!-- [17] S2010 저장 (사업성 검토)                                         -->
+    <!-- ================================================================= -->
+
+    <insert id="insertS2010" parameterType="map">
+        INSERT INTO S2010 (
+            MASTER_NO,          INFO_SUMMARY,       BASIC_TOTAL_SUM,    BIZ_TRUST_SCORE,    BIZ_POSS_SCORE,
+            BIZ_CHECK_SCORE,    BIZ_RATIO_SCORE,    TOTAL_SELECT,       TOTAL_TXT,          BASIC_RE_LINK,
+            BASIC_RESULT,       ATTACH_FILE_SEQ,    S2_STATE,           PRO_STATE,          TRUST_SCORE,
+            TRUST_SCORE_SUM,    POSS_SCORE,         POSS_SCORE_SUM,     SUM_RATIO,          INWRITER_ID,
+            UPWRITER_ID,        S2_REGI_DATE
+        ) VALUES (
+            #{masterNo},        #{infoSummary},     #{basicTotalSum},   #{bizTrustScore},   #{bizPossScore},
+            #{bizCheckScore},   #{bizRatioScore},   #{totalSelect},     #{totalTxt},        #{basicReLink},
+            #{basicResult},     #{attachFileSeq},   #{s2State},         #{proState},        #{trustScore},
+            #{trustScoreSum},   #{possScore},       #{possScoreSum},    #{sumRatio},        #{inwriterId},
+            #{upwriterId},      SYSDATE
+        )
+    </insert>
+
+    <!-- INWRITER_ID, S2_REGI_DATE는 수정 대상 아님 -->
+    <update id="updateS2010" parameterType="map">
+        UPDATE S2010
+           SET INFO_SUMMARY    = #{infoSummary},     BASIC_TOTAL_SUM   = #{basicTotalSum},   BIZ_TRUST_SCORE   = #{bizTrustScore},
+               BIZ_POSS_SCORE  = #{bizPossScore},    BIZ_CHECK_SCORE   = #{bizCheckScore},   BIZ_RATIO_SCORE   = #{bizRatioScore},
+               TOTAL_SELECT    = #{totalSelect},     TOTAL_TXT         = #{totalTxt},        BASIC_RE_LINK     = #{basicReLink},
+               BASIC_RESULT    = #{basicResult},     ATTACH_FILE_SEQ   = #{attachFileSeq},   S2_STATE          = #{s2State},
+               PRO_STATE       = #{proState},        TRUST_SCORE       = #{trustScore},      TRUST_SCORE_SUM   = #{trustScoreSum},
+               POSS_SCORE	   = #{possScore},		 POSS_SCORE_SUM	   = #{possScoreSum},	 SUM_RATIO		   = #{sumRatio},
+               UPWRITER_ID	   = #{upwriterId},      S2_UPDATE_DATE    = SYSDATE
+         WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [18] S3010 저장 (사업추진보고) — [패턴 B] #{bizInfo.fieldName} 접근   -->
+    <!-- ================================================================= -->
+
+    <insert id="insertS3010" parameterType="map">
+	    INSERT INTO S3010 (
+	        MASTER_NO,          BIZ_SUMMARY,        REPORT_METHOD,      REPORT_CONTENTS,    ATTACH_FILE_SEQ_1,
+	        APPROVAL_LINK,      BIZ_RESULT_SUMMARY, BIZ_CON_RESULT,     RESULT_STATE,       ATTACH_FILE_SEQ_2,
+	        APPROVAL_LINK2,     PRO_SUMMARY,        RISK_CHEK_METHOD,   CHECK_METHOD,       INWRITER_ID,
+	        UPWRITER_ID,        BIZ_REGI_DATE,      BIZ_UPDATE_DATE
+	    ) VALUES (
+	        #{masterNo},        #{bizInfo.bizSummary}, #{bizInfo.reportMethod}, #{bizInfo.reportContents}, #{bizInfo.attachFileSeq1},
+	        #{bizInfo.approvalLink}, #{bizInfo.bizResultSummary}, #{bizInfo.bizConResult}, #{bizInfo.resultState}, #{bizInfo.attachFileSeq2},
+	        #{bizInfo.approvalLink2}, #{bizInfo.proSummary}, #{bizInfo.riskChekMethod}, #{bizInfo.checkMethod}, #{bizInfo.inwriterId},
+	        #{bizInfo.upwriterId}, SYSDATE,            SYSDATE
+	    )
+	</insert>
+
+    <!-- <set> + <if>: null인 필드는 갱신하지 않음 — 부분 업데이트 허용 -->
+    <update id="updateS3010" parameterType="map">
+	    UPDATE S3010
+	    <set>
+	        <if test="bizInfo.bizSummary != null">       BIZ_SUMMARY        = #{bizInfo.bizSummary},       </if>
+	        <if test="bizInfo.reportMethod != null">     REPORT_METHOD      = #{bizInfo.reportMethod},     </if>
+	        <if test="bizInfo.reportContents != null">   REPORT_CONTENTS    = #{bizInfo.reportContents},   </if>
+	        <if test="bizInfo.attachFileSeq1 != null">   ATTACH_FILE_SEQ_1  = #{bizInfo.attachFileSeq1},   </if>
+	        <if test="bizInfo.approvalLink != null">     APPROVAL_LINK      = #{bizInfo.approvalLink},     </if>
+	        <if test="bizInfo.bizResultSummary != null"> BIZ_RESULT_SUMMARY = #{bizInfo.bizResultSummary}, </if>
+	        <if test="bizInfo.bizConResult != null">     BIZ_CON_RESULT     = #{bizInfo.bizConResult},     </if>
+	        <if test="bizInfo.resultState != null">      RESULT_STATE       = #{bizInfo.resultState},      </if>
+	        <if test="bizInfo.attachFileSeq2 != null">   ATTACH_FILE_SEQ_2  = #{bizInfo.attachFileSeq2},   </if>
+	        <if test="bizInfo.approvalLink2 != null">    APPROVAL_LINK2     = #{bizInfo.approvalLink2},    </if>
+	        <if test="bizInfo.proSummary != null">       PRO_SUMMARY        = #{bizInfo.proSummary},       </if>
+	        <if test="bizInfo.riskChekMethod != null">   RISK_CHEK_METHOD   = #{bizInfo.riskChekMethod},   </if>
+	        <if test="bizInfo.checkMethod != null">      CHECK_METHOD       = #{bizInfo.checkMethod},      </if>
+	        UPWRITER_ID     = #{bizInfo.upwriterId},
+	        BIZ_UPDATE_DATE = SYSDATE
+	    </set>
+	    WHERE MASTER_NO = #{masterNo}
+	</update>
+
+	<!-- ================================================================= -->
+    <!-- [19] S4010 저장 (리스크 검토) — [패턴 A] #{fieldName} 접근            -->
+    <!-- ================================================================= -->
+
+	<insert id="insertS4010" parameterType="map">
+        INSERT INTO S4010 (
+            MASTER_NO,          BIZ_REASON,         BIZ_SCORE,          APPRAISAL_RESULT,   ATTACH_FILE_SEQ,
+            S4_STATE,           PRO_STATE,          BIZ_OMIT_REASON,    APPRAISAL_LINK,     BIZ_CHECK_SCORE,
+            BIZ_RATIO_SCORE,    BIZ_SUM,            INWRITER_ID,        UPWRITER_ID,        MIKEP_DOC_NO,
+            S4_REGI_DATE,       S4_UPDATE_DATE
+        ) VALUES (
+            #{masterNo},        #{bizReason},       #{bizScore,jdbcType=VARCHAR},        #{appraisalResult}, #{attachFileSeq},
+            #{s4State},         #{proState},        #{bizOmitReason},   #{appraisalLink},   #{bizCheckScore,jdbcType=VARCHAR},
+            #{bizRatioScore,jdbcType=VARCHAR},   #{bizSum},          #{inwriterId},      #{upwriterId},      #{mikepDocNo},
+            SYSDATE,            SYSDATE
+        )
+    </insert>
+
+	<update id="updateS4010" parameterType="map">
+        UPDATE S4010
+        <set>
+            <if test="bizReason != null">       BIZ_REASON       = #{bizReason},       </if>
+            <if test="bizScore != null">        BIZ_SCORE        = #{bizScore,jdbcType=VARCHAR},        </if>
+            <if test="appraisalResult != null"> APPRAISAL_RESULT = #{appraisalResult}, </if>
+            <if test="attachFileSeq != null">   ATTACH_FILE_SEQ  = #{attachFileSeq},   </if>
+            <if test="s4State != null">         S4_STATE         = #{s4State},         </if>
+            <if test="proState != null">        PRO_STATE        = #{proState},        </if>
+            <if test="bizOmitReason != null">   BIZ_OMIT_REASON  = #{bizOmitReason},   </if>
+            <if test="appraisalLink != null">   APPRAISAL_LINK   = #{appraisalLink},   </if>
+            <if test="bizCheckScore != null">   BIZ_CHECK_SCORE  = #{bizCheckScore,jdbcType=VARCHAR},   </if>
+            <if test="bizRatioScore != null">   BIZ_RATIO_SCORE  = #{bizRatioScore,jdbcType=VARCHAR},   </if>
+            <if test="bizSum != null">          BIZ_SUM          = #{bizSum},          </if>
+            <if test="mikepDocNo != null">      MIKEP_DOC_NO     = #{mikepDocNo},      </if>
+            UPWRITER_ID    = #{upwriterId},
+            S4_UPDATE_DATE = SYSDATE
+        </set>
+        WHERE MASTER_NO = #{masterNo}
+    </update>
+
+   	<!-- ================================================================= -->
+    <!-- [20] S5010 저장 (사업선정) — [패턴 B] #{bizInfo.fieldName} 접근       -->
+    <!-- ================================================================= -->
+
+    <insert id="insertS5010" parameterType="map">
+        INSERT INTO S5010 (
+            MASTER_NO,          SELECT_SUMMARY,     SELECT_METHOD,      SELECT_CONTENTS,    ATTACH_FILE_SEQ_1,
+            ATTACH_FILE_SEQ_2,  RESULT_SUMMARY,     CONV_RESULT,        RESULT_STATE,       PRO_STATE,
+            BIZ_OMIT_REASON,    MEETING_TIME,       MEETING_PLACE,      CHECK_METHOD,       INWRITER_ID,
+            UPWRITER_ID,        SELECT_REGI_DATE,   SELECT_UPDATE_DATE
+        ) VALUES (
+            #{masterNo},        #{bizInfo.selectSummary}, #{bizInfo.selectMethod},  #{bizInfo.selectContents}, #{bizInfo.attachFileSeq1},
+            #{bizInfo.attachFileSeq2}, #{bizInfo.resultSummary}, #{bizInfo.convResult}, #{bizInfo.resultState}, #{bizInfo.proState},
+            #{bizInfo.bizOmitReason}, #{bizInfo.meetingTime}, #{bizInfo.meetingPlace}, #{bizInfo.checkMethod}, #{bizInfo.inwriterId},
+            #{bizInfo.upwriterId}, SYSDATE,            SYSDATE
+        )
+    </insert>
+
+    <update id="updateS5010" parameterType="map">
+        UPDATE S5010
+        <set>
+            <if test="bizInfo.selectSummary != null">    SELECT_SUMMARY     = #{bizInfo.selectSummary},    </if>
+            <if test="bizInfo.selectMethod != null">     SELECT_METHOD      = #{bizInfo.selectMethod},     </if>
+            <if test="bizInfo.selectContents != null">   SELECT_CONTENTS    = #{bizInfo.selectContents},   </if>
+            <if test="bizInfo.selectState != null">      SELECT_STATE       = #{bizInfo.selectState},      </if>
+            <if test="bizInfo.resultSummary != null">    RESULT_SUMMARY     = #{bizInfo.resultSummary},    </if>
+            <if test="bizInfo.convResult != null">       CONV_RESULT        = #{bizInfo.convResult},       </if>
+            <if test="bizInfo.resultState != null">      RESULT_STATE       = #{bizInfo.resultState},      </if>
+            <if test="bizInfo.proState != null">         PRO_STATE          = #{bizInfo.proState},         </if>
+            <if test="bizInfo.bizOmitReason != null">    BIZ_OMIT_REASON    = #{bizInfo.bizOmitReason},    </if>
+            <if test="bizInfo.meetingTime != null">      MEETING_TIME       = #{bizInfo.meetingTime},      </if>
+            <if test="bizInfo.meetingPlace != null">     MEETING_PLACE      = #{bizInfo.meetingPlace},     </if>
+            <if test="bizInfo.checkMethod != null">      CHECK_METHOD       = #{bizInfo.checkMethod},      </if>
+            <if test="bizInfo.attachFileSeq1 != null">   ATTACH_FILE_SEQ_1  = #{bizInfo.attachFileSeq1},   </if>
+            <if test="bizInfo.attachFileSeq2 != null">   ATTACH_FILE_SEQ_2  = #{bizInfo.attachFileSeq2},   </if>
+            <if test="bizInfo.approvalLink != null">     APPROVAL_LINK      = #{bizInfo.approvalLink},     </if>
+            UPWRITER_ID        = #{bizInfo.upwriterId},
+            SELECT_UPDATE_DATE = SYSDATE
+        </set>
+        WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [21] D1010 저장 (TF 구성) — [패턴 B] #{bizInfo.fieldName} 접근       -->
+    <!-- ================================================================= -->
+
+    <insert id="insertD1010" parameterType="map">
+        INSERT INTO D1010 (
+            MASTER_NO,          TF_SUMMARY,         REPORT_METHOD,      REPORT_CONTENTS,    BIZ_SUMMARY,
+            TF_STATE,           BIZ_STATE,          ATTACH_FILE_SEQ_1,  ATTACH_FILE_SEQ_2,  PRO_STATE,
+            BIZ_OMIT_REASON,    MEETING_TIME,       MEETING_PLACE,      INWRITER_ID,        UPWRITER_ID,
+            TF_REGI_DATE,       TF_UPDATE_DATE
+        ) VALUES (
+            #{masterNo},        #{bizInfo.tfSummary}, #{bizInfo.reportMethod}, #{bizInfo.reportContents}, #{bizInfo.bizSummary},
+            #{bizInfo.tfState}, #{bizInfo.bizState}, #{bizInfo.attachFileSeq1}, #{bizInfo.attachFileSeq2}, #{bizInfo.proState},
+            #{bizInfo.bizOmitReason}, #{bizInfo.meetingTime}, #{bizInfo.meetingPlace}, #{bizInfo.inwriterId},
+            #{bizInfo.upwriterId}, SYSDATE,            SYSDATE
+        )
+    </insert>
+
+    <update id="updateD1010" parameterType="map">
+        UPDATE D1010
+        <set>
+            <if test="bizInfo.tfSummary != null">       TF_SUMMARY        = #{bizInfo.tfSummary},      </if>
+            <if test="bizInfo.reportMethod != null">    REPORT_METHOD     = #{bizInfo.reportMethod},   </if>
+            <if test="bizInfo.reportContents != null">  REPORT_CONTENTS   = #{bizInfo.reportContents}, </if>
+            <if test="bizInfo.bizSummary != null">      BIZ_SUMMARY       = #{bizInfo.bizSummary},     </if>
+            <if test="bizInfo.tfState != null">         TF_STATE          = #{bizInfo.tfState},        </if>
+            <if test="bizInfo.bizState != null">        BIZ_STATE         = #{bizInfo.bizState},       </if>
+            <if test="bizInfo.proState != null">        PRO_STATE         = #{bizInfo.proState},       </if>
+            <if test="bizInfo.bizOmitReason != null">   BIZ_OMIT_REASON   = #{bizInfo.bizOmitReason},  </if>
+            <if test="bizInfo.meetingTime != null">     MEETING_TIME      = #{bizInfo.meetingTime},    </if>
+            <if test="bizInfo.meetingPlace != null">    MEETING_PLACE     = #{bizInfo.meetingPlace},   </if>
+            <if test="bizInfo.attachFileSeq1 != null">  ATTACH_FILE_SEQ_1 = #{bizInfo.attachFileSeq1}, </if>
+            <if test="bizInfo.attachFileSeq2 != null">  ATTACH_FILE_SEQ_2 = #{bizInfo.attachFileSeq2}, </if>
+            <if test="bizInfo.mikepDocNo != null">      MIKEP_DOC_NO      = #{bizInfo.mikepDocNo},     </if>
+            UPWRITER_ID    = #{bizInfo.upwriterId},
+            TF_UPDATE_DATE = SYSDATE
+        </set>
+        WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [22] D2010 저장 (사업개발계획) — [패턴 A] #{fieldName} 접근           -->
+    <!-- ================================================================= -->
+
+    <insert id="insertD2010" parameterType="map">
+        INSERT INTO D2010 (
+            MASTER_NO,          D2_SUMMARY,         ATTACH_FILE_SEQ,    D2_STATE,           PRO_STATE,
+            BIZ_OMIT_REASON,    INWRITER_ID,        UPWRITER_ID,        D2_REGI_DATE,       D2_UPDATE_DATE
+        ) VALUES (
+            #{masterNo},        #{d2Summary},       #{attachFileSeq},   #{d2State},         #{proState},
+            #{bizOmitReason},   #{inwriterId},      #{upwriterId},      SYSDATE,            SYSDATE
+        )
+    </insert>
+
+    <update id="updateD2010" parameterType="map">
+        UPDATE D2010
+           SET D2_SUMMARY      = #{d2Summary},       ATTACH_FILE_SEQ   = #{attachFileSeq},   D2_STATE          = #{d2State},
+               PRO_STATE       = #{proState},        BIZ_OMIT_REASON   = #{bizOmitReason},   MIKEP_DOC_NO      = #{mikepDocNo},
+               UPWRITER_ID     = #{upwriterId},      D2_UPDATE_DATE    = SYSDATE
+         WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [23] D3010 저장 (리스크 검토) — [패턴 B] #{bizInfo.fieldName} 접근    -->
+    <!-- ================================================================= -->
+
+    <insert id="insertD3010" parameterType="map">
+        INSERT INTO D3010 (
+            MASTER_NO,          RISK_SUMMARY,       RISK_METHOD,        RISK_CONTENTS,      RISK_STATE,
+            RISK_RESULT_SUMMARY, RISK_SUM,          STANDARD_RATE,      RISK_MEET_RESULT,   ATTACH_FILE_SEQ_1,
+            ATTACH_FILE_SEQ_2,  RESULT_STATE,       PRO_STATE,          RISK_CHECK_METHOD,  BIZ_OMIT_REASON,
+            MEETING_TIME,       MEETING_PLACE,      INWRITER_ID,        UPWRITER_ID,        RISK_REGI_DATE,
+            RISK_UPDATE_DATE
+        ) VALUES (
+            #{masterNo},        #{bizInfo.riskSummary}, #{bizInfo.riskMethod}, #{bizInfo.riskContents}, #{bizInfo.riskState},
+            #{bizInfo.riskResultSummary}, #{bizInfo.riskSum}, #{bizInfo.standardRate}, #{bizInfo.riskMeetResult}, #{bizInfo.attachFileSeq1},
+            #{bizInfo.attachFileSeq2}, #{bizInfo.resultState}, #{bizInfo.proState}, #{bizInfo.riskCheckMethod}, #{bizInfo.bizOmitReason},
+            #{bizInfo.meetingTime}, #{bizInfo.meetingPlace}, #{bizInfo.inwriterId}, #{bizInfo.upwriterId}, SYSDATE,
+            SYSDATE
+        )
+    </insert>
+
+    <update id="updateD3010" parameterType="map">
+        UPDATE D3010
+        <set>
+            <if test="bizInfo.riskSummary != null">       RISK_SUMMARY        = #{bizInfo.riskSummary},       </if>
+            <if test="bizInfo.riskMethod != null">        RISK_METHOD         = #{bizInfo.riskMethod},        </if>
+            <if test="bizInfo.riskContents != null">      RISK_CONTENTS       = #{bizInfo.riskContents},      </if>
+            <if test="bizInfo.riskState != null">         RISK_STATE          = #{bizInfo.riskState},         </if>
+            <if test="bizInfo.riskResultSummary != null"> RISK_RESULT_SUMMARY = #{bizInfo.riskResultSummary}, </if>
+            <if test="bizInfo.riskSum != null">           RISK_SUM            = #{bizInfo.riskSum},           </if>
+            <if test="bizInfo.standardRate != null">      STANDARD_RATE       = #{bizInfo.standardRate},      </if>
+            <if test="bizInfo.riskMeetResult != null">    RISK_MEET_RESULT    = #{bizInfo.riskMeetResult},    </if>
+            <if test="bizInfo.resultState != null">       RESULT_STATE        = #{bizInfo.resultState},       </if>
+            <if test="bizInfo.proState != null">          PRO_STATE           = #{bizInfo.proState},          </if>
+            <if test="bizInfo.riskCheckMethod != null">   RISK_CHECK_METHOD   = #{bizInfo.riskCheckMethod},   </if>
+            <if test="bizInfo.bizOmitReason != null">     BIZ_OMIT_REASON     = #{bizInfo.bizOmitReason},     </if>
+            <if test="bizInfo.meetingTime != null">       MEETING_TIME        = #{bizInfo.meetingTime},       </if>
+            <if test="bizInfo.meetingPlace != null">      MEETING_PLACE       = #{bizInfo.meetingPlace},      </if>
+            <if test="bizInfo.attachFileSeq1 != null">    ATTACH_FILE_SEQ_1   = #{bizInfo.attachFileSeq1},    </if>
+            <if test="bizInfo.attachFileSeq2 != null">    ATTACH_FILE_SEQ_2   = #{bizInfo.attachFileSeq2},    </if>
+            <if test="bizInfo.mikepDocNo != null">        MIKEP_DOC_NO        = #{bizInfo.mikepDocNo},        </if>
+            UPWRITER_ID      = #{bizInfo.upwriterId},
+            RISK_UPDATE_DATE = SYSDATE
+        </set>
+        WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [24] D3020 저장 (리스크 관리자 검토 — D35 단계)                       -->
+    <!--      [패턴 B] #{bizInfo.fieldName} 접근                              -->
+    <!-- ================================================================= -->
+
+    <insert id="insertD3020" parameterType="map">
+        INSERT INTO D3020 (
+            MASTER_NO,          RISK_MANAGER_SUMMARY, RISK_MANAGER_METHOD, RISK_MANAGER_CONTENTS,
+            RISK_MANAGER_STATE, MANAGER_RESULT_SUMMARY, MANAGER_APP_RESULT, ATTACH_FILE_SEQ_1,
+            ATTACH_FILE_SEQ_2,  MANAGER_STATE,      PRO_STATE,          BIZ_OMIT_REASON,
+            MEETING_TIME,       MEETING_PLACE,      CHECK_METHOD,       INWRITER_ID,
+            UPWRITER_ID,        RISK_MANAGER_REGI_DATE, RISK_MANAGER_UPDATE_DATE
+        ) VALUES (
+            #{masterNo},        #{bizInfo.riskManagerSummary}, #{bizInfo.riskManagerMethod}, #{bizInfo.riskManagerContents},
+            #{bizInfo.riskManagerState}, #{bizInfo.managerResultSummary}, #{bizInfo.managerAppResult}, #{bizInfo.attachFileSeq1},
+            #{bizInfo.attachFileSeq2}, #{bizInfo.managerState}, #{bizInfo.proState}, #{bizInfo.bizOmitReason},
+            #{bizInfo.meetingTime}, #{bizInfo.meetingPlace}, #{bizInfo.checkMethod}, #{bizInfo.inwriterId},
+            #{bizInfo.upwriterId}, SYSDATE,            SYSDATE
+        )
+    </insert>
+
+    <update id="updateD3020" parameterType="map">
+        UPDATE D3020
+        <set>
+            <if test="bizInfo.riskManagerSummary != null">  RISK_MANAGER_SUMMARY = #{bizInfo.riskManagerSummary},  </if>
+            <if test="bizInfo.riskManagerMethod != null">   RISK_MANAGER_METHOD  = #{bizInfo.riskManagerMethod},   </if>
+            <if test="bizInfo.riskManagerContents != null"> RISK_MANAGER_CONTENTS = #{bizInfo.riskManagerContents}, </if>
+            <if test="bizInfo.riskManagerState != null">    RISK_MANAGER_STATE    = #{bizInfo.riskManagerState},    </if>
+            <if test="bizInfo.managerResultSummary != null"> MANAGER_RESULT_SUMMARY = #{bizInfo.managerResultSummary}, </if>
+            <if test="bizInfo.managerAppResult != null">    MANAGER_APP_RESULT    = #{bizInfo.managerAppResult},    </if>
+            <if test="bizInfo.managerState != null">        MANAGER_STATE         = #{bizInfo.managerState},         </if>
+            <if test="bizInfo.proState != null">            PRO_STATE             = #{bizInfo.proState},             </if>
+            <if test="bizInfo.bizOmitReason != null">       BIZ_OMIT_REASON       = #{bizInfo.bizOmitReason},       </if>
+            <if test="bizInfo.meetingTime != null">         MEETING_TIME          = #{bizInfo.meetingTime},          </if>
+            <if test="bizInfo.meetingPlace != null">        MEETING_PLACE         = #{bizInfo.meetingPlace},         </if>
+            <if test="bizInfo.checkMethod != null">         CHECK_METHOD          = #{bizInfo.checkMethod},          </if>
+            <if test="bizInfo.attachFileSeq1 != null">      ATTACH_FILE_SEQ_1     = #{bizInfo.attachFileSeq1},      </if>
+            <if test="bizInfo.attachFileSeq2 != null">      ATTACH_FILE_SEQ_2     = #{bizInfo.attachFileSeq2},      </if>
+            <if test="bizInfo.mikepDocNo != null">          MIKEP_DOC_NO          = #{bizInfo.mikepDocNo},          </if>
+            <if test="bizInfo.approvalLink != null">        APPROVAL_LINK         = #{bizInfo.approvalLink},         </if>
+            UPWRITER_ID             = #{bizInfo.upwriterId},
+            RISK_MANAGER_UPDATE_DATE = SYSDATE
+        </set>
+        WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [25] D4010 저장 (입찰/제안) — [패턴 B] #{bizInfo.fieldName} 접근      -->
+    <!-- ================================================================= -->
+
+    <insert id="insertD4010" parameterType="map">
+        INSERT INTO D4010 (
+            MASTER_NO,          TENDER_SUMMARY,     ATTACH_FILE_SEQ_1,  APPROVAL_LINK,      TENDER_STATE,
+            SUBMIT_SUMMARY,     ATTACH_FILE_SEQ_2,  SUBMIT_STATE,       PRO_STATE,          BIZ_OMIT_REASON,
+            INWRITER_ID,        UPWRITER_ID,        TENDER_REGI_DATE,   TENDER_UPDATE_DATE, SUBMIT_REGI_DATE
+        ) VALUES (
+            #{masterNo},        #{bizInfo.tenderSummary}, #{bizInfo.attachFileSeq1}, #{bizInfo.approvalLink}, #{bizInfo.tenderState},
+            #{bizInfo.submitSummary}, #{bizInfo.attachFileSeq2}, #{bizInfo.submitState}, #{bizInfo.proState}, #{bizInfo.bizOmitReason},
+            #{bizInfo.inwriterId}, #{bizInfo.upwriterId}, SYSDATE,            SYSDATE,            SYSDATE
+        )
+    </insert>
+
+    <update id="updateD4010" parameterType="map">
+        UPDATE D4010
+        <set>
+            <if test="bizInfo.tenderSummary != null">    TENDER_SUMMARY     = #{bizInfo.tenderSummary},    </if>
+            <if test="bizInfo.attachFileSeq1 != null">   ATTACH_FILE_SEQ_1  = #{bizInfo.attachFileSeq1},   </if>
+            <if test="bizInfo.approvalLink != null">     APPROVAL_LINK      = #{bizInfo.approvalLink},     </if>
+            <if test="bizInfo.tenderState != null">      TENDER_STATE       = #{bizInfo.tenderState},      </if>
+            <if test="bizInfo.submitSummary != null">    SUBMIT_SUMMARY     = #{bizInfo.submitSummary},    </if>
+            <if test="bizInfo.attachFileSeq2 != null">   ATTACH_FILE_SEQ_2  = #{bizInfo.attachFileSeq2},   </if>
+            <if test="bizInfo.submitState != null">      SUBMIT_STATE       = #{bizInfo.submitState},      </if>
+            <if test="bizInfo.proState != null">         PRO_STATE          = #{bizInfo.proState},         </if>
+            <if test="bizInfo.bizOmitReason != null">    BIZ_OMIT_REASON    = #{bizInfo.bizOmitReason},    </if>
+            <if test="bizInfo.mikepState != null">       MIKEP_STATE        = #{bizInfo.mikepState},       </if>
+            <if test="bizInfo.mikepDocNo != null">       MIKEP_DOC_NO       = #{bizInfo.mikepDocNo},       </if>
+            <if test="bizInfo.approvalLink1 != null">    APPROVAL_LINK1     = #{bizInfo.approvalLink1},    </if>
+            <if test="bizInfo.approvalLink2 != null">    APPROVAL_LINK2     = #{bizInfo.approvalLink2},    </if>
+            UPWRITER_ID        = #{bizInfo.upwriterId},
+            TENDER_UPDATE_DATE = SYSDATE,
+            SUBMIT_UPDATE_DATE = SYSDATE
+        </set>
+        WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [26] D5010 저장 (협상/낙찰) — [패턴 B] #{bizInfo.fieldName} 접근      -->
+    <!-- ================================================================= -->
+
+	<insert id="insertD5010" parameterType="map">
+        INSERT INTO D5010 (
+            MASTER_NO,          MANAGER_SUMMARY,    ATTACH_FILE_SEQ_1,  APPROVAL_LINK,      MANAGER_STATE,
+            SUCCESS_SUMMARY,    SUCCESS_RESULT,     ATTACH_FILE_SEQ_2,  SUCCESS_STATE,      PRO_STATE,
+            BIZ_OMIT_REASON,    INWRITER_ID,        UPWRITER_ID,        MANAGER_REGI_DATE,  MANAGER_UPDATE_DATE,
+            SUCCESS_REGI_DATE
+        ) VALUES (
+            #{masterNo},        #{bizInfo.managerSummary}, #{bizInfo.attachFileSeq1}, #{bizInfo.approvalLink}, #{bizInfo.managerState},
+            #{bizInfo.successSummary}, #{bizInfo.successResult}, #{bizInfo.attachFileSeq2}, #{bizInfo.successState}, #{bizInfo.proState},
+            #{bizInfo.bizOmitReason}, #{bizInfo.inwriterId}, #{bizInfo.upwriterId}, SYSDATE,            SYSDATE,
+            SYSDATE
+        )
+    </insert>
+
+    <update id="updateD5010" parameterType="map">
+        UPDATE D5010
+        <set>
+            <if test="bizInfo.managerSummary != null">   MANAGER_SUMMARY    = #{bizInfo.managerSummary},   </if>
+            <if test="bizInfo.attachFileSeq1 != null">   ATTACH_FILE_SEQ_1  = #{bizInfo.attachFileSeq1},   </if>
+            <if test="bizInfo.approvalLink != null">     APPROVAL_LINK      = #{bizInfo.approvalLink},     </if>
+            <if test="bizInfo.managerState != null">     MANAGER_STATE      = #{bizInfo.managerState},     </if>
+            <if test="bizInfo.successSummary != null">   SUCCESS_SUMMARY    = #{bizInfo.successSummary},   </if>
+            <if test="bizInfo.successResult != null">    SUCCESS_RESULT     = #{bizInfo.successResult},    </if>
+            <if test="bizInfo.attachFileSeq2 != null">   ATTACH_FILE_SEQ_2  = #{bizInfo.attachFileSeq2},   </if>
+            <if test="bizInfo.successState != null">     SUCCESS_STATE      = #{bizInfo.successState},     </if>
+            <if test="bizInfo.proState != null">         PRO_STATE          = #{bizInfo.proState},         </if>
+            <if test="bizInfo.bizOmitReason != null">    BIZ_OMIT_REASON    = #{bizInfo.bizOmitReason},    </if>
+            <if test="bizInfo.mikepState1 != null">      MIKEP_STATE1       = #{bizInfo.mikepState1},      </if>
+            <if test="bizInfo.approvalLink1 != null">    APPROVAL_LINK1     = #{bizInfo.approvalLink1},    </if>
+            <if test="bizInfo.mikepDocNo != null">       MIKEP_DOC_NO       = #{bizInfo.mikepDocNo},       </if>
+            UPWRITER_ID         = #{bizInfo.upwriterId},
+            MANAGER_UPDATE_DATE = SYSDATE,
+            SUCCESS_UPDATE_DATE = SYSDATE
+        </set>
+        WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [27] D6010 저장 (계약) — [패턴 B] #{bizInfo.fieldName} 접근           -->
+    <!-- ================================================================= -->
+
+    <insert id="insertD6010" parameterType="map">
+        INSERT INTO D6010 (
+            MASTER_NO,          MANAGER_SUMMARY,    ATTACH_FILE_SEQ_1,  APPROVAL_LINK,      MANAGER_STATE,
+            SUBMIT_SUMMARY,     ATTACH_FILE_SEQ_2,  SUBMIT_STATE,       PRO_STATE,          BIZ_OMIT_REASON,
+            INWRITER_ID,        UPWRITER_ID,        MANAGER_REGI_DATE,  MANAGER_UPDATE_DATE, SUBMIT_REGI_DATE
+        ) VALUES (
+            #{masterNo},        #{bizInfo.managerSummary}, #{bizInfo.attachFileSeq1}, #{bizInfo.approvalLink}, #{bizInfo.managerState},
+            #{bizInfo.submitSummary}, #{bizInfo.attachFileSeq2}, #{bizInfo.submitState}, #{bizInfo.proState}, #{bizInfo.bizOmitReason},
+            #{bizInfo.inwriterId}, #{bizInfo.upwriterId}, SYSDATE,            SYSDATE,            SYSDATE
+        )
+    </insert>
+
+    <update id="updateD6010" parameterType="map">
+        UPDATE D6010
+        <set>
+            <if test="bizInfo.managerSummary != null">   MANAGER_SUMMARY     = #{bizInfo.managerSummary},  </if>
+            <if test="bizInfo.attachFileSeq1 != null">   ATTACH_FILE_SEQ_1  = #{bizInfo.attachFileSeq1},   </if>
+            <if test="bizInfo.approvalLink != null">     APPROVAL_LINK      = #{bizInfo.approvalLink},     </if>
+            <if test="bizInfo.managerState != null">     MANAGER_STATE      = #{bizInfo.managerState},     </if>
+            <if test="bizInfo.submitSummary != null">    SUBMIT_SUMMARY     = #{bizInfo.submitSummary},    </if>
+            <if test="bizInfo.attachFileSeq2 != null">   ATTACH_FILE_SEQ_2  = #{bizInfo.attachFileSeq2},   </if>
+            <if test="bizInfo.submitState != null">      SUBMIT_STATE       = #{bizInfo.submitState},      </if>
+            <if test="bizInfo.proState != null">         PRO_STATE          = #{bizInfo.proState},         </if>
+            <if test="bizInfo.bizOmitReason != null">    BIZ_OMIT_REASON    = #{bizInfo.bizOmitReason},    </if>
+            <if test="bizInfo.mikepState1 != null">      MIKEP_STATE1       = #{bizInfo.mikepState1},      </if>
+            <if test="bizInfo.approvalLink1 != null">    APPROVAL_LINK1     = #{bizInfo.approvalLink1},    </if>
+            <if test="bizInfo.mikepDocNo != null">       MIKEP_DOC_NO       = #{bizInfo.mikepDocNo},       </if>
+            UPWRITER_ID         = #{bizInfo.upwriterId},
+            MANAGER_UPDATE_DATE = SYSDATE,
+            SUBMIT_UPDATE_DATE  = SYSDATE
+        </set>
+        WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [28] D7010 저장 (사업종결) — [패턴 A] #{fieldName} 접근               -->
+    <!-- ================================================================= -->
+
+    <insert id="insertD7010" parameterType="map">
+        INSERT INTO D7010 (
+            MASTER_NO,          CONTRACT_SUMMARY,   ATTACH_FILE_SEQ,    CONTRACT_STATE,     PRO_STATE,
+            BIZ_OMIT_REASON,    INWRITER_ID,        UPWRITER_ID,        CONTRACT_REGI_DATE, CONTRACT_UPDATE_DATE
+        ) VALUES (
+            #{masterNo},        #{contractSummary}, #{attachFileSeq},   #{contractState},   #{proState},
+            #{bizOmitReason},   #{inwriterId},      #{upwriterId},      SYSDATE,            SYSDATE
+        )
+    </insert>
+
+    <update id="updateD7010" parameterType="map">
+        UPDATE D7010
+           SET CONTRACT_SUMMARY  = #{contractSummary}, ATTACH_FILE_SEQ   = #{attachFileSeq}, CONTRACT_STATE    = #{contractState},
+               PRO_STATE         = #{proState},        BIZ_OMIT_REASON   = #{bizOmitReason}, MIKEP_DOC_NO      = #{mikepDocNo},
+               UPWRITER_ID       = #{upwriterId},      CONTRACT_UPDATE_DATE = SYSDATE
+         WHERE MASTER_NO = #{masterNo}
+    </update>
+
+    <!-- ================================================================= -->
+    <!-- [29] 컨소시엄 저장                                                   -->
+    <!-- ================================================================= -->
+    <!-- ORDER_NO: 서브쿼리로 자동 채번 (기존 최대값 + 1)                       -->
+    <!-- → 서비스에서 별도 채번 없이 INSERT 시 자동으로 순번 부여               -->
+
+    <insert id="insertConsortium" parameterType="map">
+        INSERT INTO S1010_CONSORTIUM (
+            MASTER_NO,          ORDER_NO,           COMPANY_NAME,       CEO_NAME,           COM_ADDR,
+            COM_HOMEPAGE,       COM_TEL,            COM_HP,             COM_FAX,            BIZ_FIELD,
+            BIZ_STAKE
+        ) VALUES (
+            #{masterNo},
+            (SELECT NVL(MAX(ORDER_NO), 0) + 1 FROM S1010_CONSORTIUM WHERE MASTER_NO = #{masterNo}),
+            #{companyName},     #{ceoName},         #{comAddr},         #{comHomepage},     #{comTel},
+            #{comHp},           #{comFax},          #{bizField},        #{bizStake}
+        )
+    </insert>
+
+    <!-- ================================================================= -->
+    <!-- [30] S10 - 컨소시엄 이력 저장 (S1010_CONSORTIUM_HISTORY)             -->
+    <!-- bizInfo 변경 시 컨소시엄 상태도 함께 스냅샷 저장 → 버전 동기화 보장      -->
+    <!-- ================================================================= -->
+
+    <insert id="insertConsortiumHistory" parameterType="map">
+	    INSERT INTO S1010_CONSORTIUM_HISTORY (
+	        MASTER_NO,    VERSION,     ORDER_NO,      COMPANY_NAME,   CEO_NAME,
+	        COM_ADDR,     COM_HOMEPAGE, COM_TEL,      COM_HP,         COM_FAX,
+	        BIZ_FIELD,    BIZ_STAKE
+	    ) VALUES (
+	        #{masterNo},	#{version},		#{orderNo},	  #{companyName}, #{ceoName},
+	        #{comAddr},		#{comHomepage}, #{comTel},	  #{comHp},       #{comFax},
+	        #{bizField},	#{bizStake}
+	    )
+	</insert>
+
+    <!-- ================================================================= -->
+    <!-- [31] S10 - 버전 이력 조회/채번                                       -->
+    <!-- ================================================================= -->
+    <!-- 버전은 bizInfo 변경 시에만 생성되며, 컨소시엄은 항상 동일 버전으로 동기화  -->
+
+    <!-- 다음 히스토리 버전 번호 채번                                           -->
+    <!-- UNION ALL: S1010_HISTORY와 S1010_CONSORTIUM_HISTORY 양쪽에서       -->
+    <!--   MAX(VERSION)을 구해 더 큰 값 기준으로 +1 채번 → 두 테이블 버전 동기화  -->
+    <!-- COALESCE: 이력이 없을 경우(NULL) → 0으로 처리하여 첫 버전 = 1          -->
+	<select id="getNextHistoryVersion" parameterType="string" resultType="int">
+	    SELECT COALESCE(MAX(v), 0) + 1
+	    FROM (
+	        SELECT MAX(VERSION) v FROM S1010_HISTORY            WHERE MASTER_NO = #{masterNo}
+	        UNION ALL
+	        SELECT MAX(VERSION) v FROM S1010_CONSORTIUM_HISTORY WHERE MASTER_NO = #{masterNo}
+	    )
+	</select>
+
+	<!-- 버전 드롭다운 목록 조회 (중복 제거 후 최신순 정렬) -->
+	<select id="selectHistoryVersionList" parameterType="map" resultType="CamelHashMap">
+	    SELECT DISTINCT version
+	    FROM (
+	        SELECT VERSION FROM S1010_HISTORY            WHERE MASTER_NO = #{masterNo}
+	        UNION
+	        SELECT VERSION FROM S1010_CONSORTIUM_HISTORY WHERE MASTER_NO = #{masterNo}
+	    )
+	    ORDER BY VERSION DESC
+	</select>
+
+	<!-- S1010 히스토리 단건 조회 -->
+	<select id="selectS1010History" parameterType="map" resultType="CamelHashMap">
+	    SELECT
+	        MASTER_NO,          VERSION,            GONGGO_NUM,         GONGGO_NAME,        GONGGO_ORG,
+	        NVL(INFO_NAME, '')  AS INFO_NAME,       NVL(INFO_DEPT, '')  AS INFO_DEPT,       NVL(INFO_POS, '')   AS INFO_POS,
+	        NVL(INFO_ADDRESS,'') AS INFO_ADDRESS,   NVL(INFO_TEL, '')   AS INFO_TEL,        NVL(INFO_HP, '')    AS INFO_HP,         NVL(INFO_FAX, '')   AS INFO_FAX,
+	        ATTACH_FILE_SEQ_1,  INFO_ETC,           BIZ_CONTENTS,       BIZ_WORK,           BIZ_MONEY,
+	        BIZ_DATE,           BIZ_METHOD,         BIZ_CONDITION,      BIZ_COM,            BIZ_OMIT_REASON,
+	        ORDER_COMPANY,      ORDER_OWNER,        ORDER_ADDR,         ORDER_HOMPAGE,      ORDER_DEPT,
+	        ORDER_POS,          ORDER_NAME,         ORDER_TEL,          ORDER_HP,           ORDER_FAX,
+	        POWER_VOLUME,       HO_GISU,            WORK_PERIOD,        USE_DATE,           START_DATE,
+	        ALL_MONEY,          CONTRACT_DATE,      DEMAND_DEPT,        POWER_INFO,
+	        OIL_CON,            OIL_DATE,           OIL_CONDITION,      OIL_MOVE,
+	        PACT_SELECT,        ATTACH_FILE_SEQ_2,  TEASER_SELECT,      ATTACH_FILE_SEQ_3,
+	        LOI_SELECT,         ATTACH_FILE_SEQ_4,  CA_SELECT,          ATTACH_FILE_SEQ_5,
+	        PRO_STATE,          S1_STATE,           REGI_DATE,          UPDATE_DATE,        FINISH_DATE,
+	        APPROVAL_LINK,      APPROVAL_LINK1,     RESULT_REGI_DATE,   RESULT_FINISH_DATE,
+	        MINE_STATE,         MINE_MASTER,        MINE_TOTAL,         MINE_OUTPUT,        MINE_STANDARD,
+	        MINE_PORT,          MINE_DEV,           PRECOD,             POSTCOD,
+	        VERSION_UPDATE_DATE, VERSION_UPDATE_USERID, VERSION_UPDATE_NAME, UPDATE_CONTENTS,
+	        MIKEP_STATE,        MIKEP_STATE1,       MIKEP_DOC_NO,       INWRITER_ID,        UPWRITER_ID,
+	        AMT_UNIT,           POWER_UNIT
+	    FROM S1010_HISTORY
+	    WHERE MASTER_NO = #{masterNo}
+	      AND VERSION   = #{version}
+	</select>
+
+	<!-- 컨소시엄 히스토리 목록 조회 -->
+	<select id="selectConsortiumHistoryList" parameterType="map" resultType="CamelHashMap">
+	    SELECT
+	        MASTER_NO,          ORDER_NO,           VERSION,            COMPANY_NAME,           CEO_NAME,
+	        COM_ADDR,           COM_HOMEPAGE,       COM_TEL,            COM_HP,                 COM_FAX,
+	        BIZ_FIELD,          BIZ_STAKE,          VERSION_UPDATE_DATE, VERSION_UPDATE_USERID, VERSION_UPDATE_NAME
+	    FROM S1010_CONSORTIUM_HISTORY
+	    WHERE MASTER_NO = #{masterNo}
+	      AND VERSION   = #{version}
+	    ORDER BY ORDER_NO
+	</select>
+
+
+
+    <!-- ── BIZ_MEMBER (담당자/열람자) ───────────────────────────────────── -->
+
+    <select id="selectBizMembers" parameterType="map" resultType="CamelHashMap">
+        SELECT EMPNO, EMP_NAME, BNO
+        FROM BIZ_MEMBER
+        WHERE MASTER_NO = #{masterNo}
+          AND PRO_STEP  = 'S10'
+        ORDER BY BNO
+    </select>
+
+
+    <delete id="deleteBizMembers" parameterType="String">
+        DELETE FROM BIZ_MEMBER WHERE MASTER_NO = #{masterNo}
+    </delete>
+
+    <insert id="insertBizMember" parameterType="map">
+        INSERT INTO BIZ_MEMBER (MASTER_NO, EMPNO, PRO_STEP, BNO, USE_YN, REGI_DATE, EMP_NAME)
+        VALUES (#{masterNo}, #{empno}, #{proStep}, #{bno}, 'Y', SYSDATE, #{empName})
+    </insert>
+
+</mapper>

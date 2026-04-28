@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.koen.kopms_api.task.dept.dao.DeptDao">
+	
+    <!-- 조직정보 : 트리 -->
+    <select id="selectDepts" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT LEVEL, DEPTNO, UP_CODE, DEPT_NAME
+		     --, LPAD(' ', (LEVEL-1) * 2) || DEPT_NAME AS DEPT_NAME
+		     , DEPT_ORDER, MINLEVELNO, MANAGER
+		     , HOSTNAME, ALIAS_NAME, DEPT_GUBUN, BRANCH_YN
+		     , CONNECT_BY_ISLEAF AS IS_LEAF
+		     , LTRIM(SYS_CONNECT_BY_PATH(DEPT_NAME, ' > '), ' > ') AS DEPT_PATH
+		  FROM DEPT
+		 WHERE 1 = 1
+		 START WITH DEPTNO = '0000'
+	   CONNECT BY PRIOR DEPTNO = UP_CODE
+		 ORDER SIBLINGS BY DEPT_ORDER
+    </select>
+    
+     <!-- 조직정보 : 부서 선택용 -->
+    <select id="selectDeptCodes" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT DEPTNO, UP_CODE, DEPT_NAME, DEPT_GUBUN, MINLEVELNO
+		  FROM DEPT
+		 WHERE 1 = 1
+		 ORDER BY DEPTNO, DEPT_ORDER
+    </select>
+    
+    <!-- 조직정보  저장 -->
+	<insert id="upsertDept" parameterType="HashMap">
+		MERGE INTO DEPT t
+		USING (
+		    SELECT
+		        #{deptno,     jdbcType=VARCHAR} AS DEPTNO,
+		        #{upCode,     jdbcType=VARCHAR} AS UP_CODE,
+		        #{deptName,   jdbcType=VARCHAR} AS DEPT_NAME,
+		        #{deptOrder,  jdbcType=VARCHAR} AS DEPT_ORDER,
+		        #{minlevelno, jdbcType=VARCHAR} AS MINLEVELNO,
+		        #{manager,    jdbcType=VARCHAR} AS MANAGER,
+		        #{hostname,   jdbcType=VARCHAR} AS HOSTNAME,
+		        #{aliasName,  jdbcType=VARCHAR} AS ALIAS_NAME,
+		        #{deptGubun,  jdbcType=VARCHAR} AS DEPT_GUBUN,
+		        #{branchYn,   jdbcType=VARCHAR} AS BRANCH_YN
+		    FROM dual
+		) s
+		ON (t.DEPTNO = s.DEPTNO)
+		
+		WHEN MATCHED THEN
+		    UPDATE SET
+		        t.UP_CODE     = s.UP_CODE,
+		        t.DEPT_NAME   = s.DEPT_NAME,
+		        t.DEPT_ORDER  = s.DEPT_ORDER,
+		        t.MINLEVELNO  = s.MINLEVELNO,
+		        t.MANAGER     = s.MANAGER,
+		        t.HOSTNAME    = s.HOSTNAME,
+		        t.ALIAS_NAME  = s.ALIAS_NAME,
+		        t.DEPT_GUBUN  = s.DEPT_GUBUN,
+		        t.BRANCH_YN   = s.BRANCH_YN
+		
+		WHEN NOT MATCHED THEN
+		    INSERT (
+		        DEPTNO,
+		        UP_CODE,
+		        DEPT_NAME,
+		        DEPT_ORDER,
+		        MINLEVELNO,
+		        MANAGER,
+		        HOSTNAME,
+		        ALIAS_NAME,
+		        DEPT_GUBUN,
+		        REG_DATE,
+		        BRANCH_YN
+		    )
+		    VALUES (
+		        s.DEPTNO,
+		        s.UP_CODE,
+		        s.DEPT_NAME,
+		        s.DEPT_ORDER,
+		        s.MINLEVELNO,
+		        s.MANAGER,
+		        s.HOSTNAME,
+		        s.ALIAS_NAME,
+		        s.DEPT_GUBUN,
+		        SYSDATE,
+		        s.BRANCH_YN
+		    )
+	</insert>
+    
+
+    <!-- 부서 메뉴 권한 조회 (USE_YN = 'Y' 인 목록) — AuthorityEdit 셔틀용 -->
+    <select id="selectDeptMenus" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT MENU_CODE, MENU_NO
+          FROM MENU_AUTH
+         WHERE DEPTNO = #{deptno}
+           AND USE_YN = 'Y'
+    </select>
+
+    <!-- 권한 목록 조회 — Authority 조회 화면용 (부서 × 메뉴) -->
+    <select id="selectAuthorityList" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT d.DEPTNO
+             , d.DEPT_NAME
+             , ml_top.MENU_NAME AS TOP_MENU_NAME
+             , ml.MENU_NAME
+             , ml.MENU_CODE
+             , ml.MENU_NO
+          FROM DEPT       d
+          JOIN MENU_AUTH  ma     ON ma.DEPTNO    = d.DEPTNO
+                                AND ma.USE_YN    = 'Y'
+          JOIN MENU_LIST  ml     ON ml.MENU_CODE = ma.MENU_CODE
+                                AND ml.MENU_NO   = ma.MENU_NO
+          JOIN MENU_LIST  ml_top ON ml_top.MENU_NO = ml.TOP_NO
+                                AND ml_top.UP_MENU_NO IS NULL
+         WHERE 1 = 1
+           <if test='deptName != null and deptName != ""'>
+           AND d.DEPT_NAME LIKE '%' || #{deptName} || '%'
+           </if>
+           <if test='menuName != null and menuName != ""'>
+           AND ml.MENU_NAME LIKE '%' || #{menuName} || '%'
+           </if>
+         ORDER BY d.DEPTNO, ml.MENU_CODE, ml.MENU_NO
+    </select>
+
+    <!-- 부서 메뉴 권한 비활성화 (해당 부서 전체 → USE_YN = 'N') -->
+    <update id="updateDeptMenusToInactive" parameterType="HashMap">
+        UPDATE MENU_AUTH
+           SET USE_YN      = 'N'
+             , UPDATE_DATE = SYSDATE
+             , UPWRITER_ID = #{upwriterId}
+         WHERE DEPTNO = #{deptno}
+    </update>
+
+    <!-- 부서 메뉴 권한 MERGE
+         - WHEN MATCHED     : USE_YN='Y' 복원 + 수정자/일시 갱신  (INWRITER_ID, REGI_DATE 유지)
+         - WHEN NOT MATCHED : 신규 INSERT
+    -->
+    <insert id="mergeDeptMenus" parameterType="HashMap">
+        MERGE INTO MENU_AUTH t
+        USING (
+            <foreach collection="menuList" item="item" separator="UNION ALL">
+                SELECT #{deptno}        AS DEPTNO
+                     , #{item.menuCode} AS MENU_CODE
+                     , #{item.menuNo}   AS MENU_NO
+                  FROM dual
+            </foreach>
+        ) s
+        ON (    t.DEPTNO    = s.DEPTNO
+            AND t.MENU_CODE = s.MENU_CODE
+            AND t.MENU_NO   = s.MENU_NO)
+        WHEN MATCHED THEN
+            UPDATE SET t.USE_YN      = 'Y'
+                     , t.UPDATE_DATE = SYSDATE
+                     , t.UPWRITER_ID = #{upwriterId}
+        WHEN NOT MATCHED THEN
+            INSERT (DEPTNO, MENU_CODE, MENU_NO, USE_YN, REGI_DATE, INWRITER_ID)
+            VALUES (s.DEPTNO, s.MENU_CODE, s.MENU_NO, 'Y', SYSDATE, #{upwriterId})
+    </insert>
+
+</mapper>

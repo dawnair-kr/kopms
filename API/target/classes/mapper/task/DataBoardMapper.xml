@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.koen.kopms_api.task.databoard.dao.DataBoardDao">
+	
+    <!-- 자료실 카테고리 : 트리 -->
+    <select id="selectDataBoardTree" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT LEVEL AS LVL
+			 , LPAD(' ', (LEVEL-1)*2) || TYPE_NAME AS TREE_NAME
+		     , TYPE_CODE
+		     , UP_TYPE_CODE
+		     , TYPE_NAME
+		     , TYPE_ORDER		-- 같은 부모 내 정렬
+		     , BROTHER_ORDER	-- 형제간 추가 정렬 필요 시 사용
+		     , TYPE_NO
+		     , TYPE_NM
+		     , STATUS
+		     , CONNECT_BY_ISLEAF AS IS_LEAF
+		     , LTRIM(SYS_CONNECT_BY_PATH(TYPE_CODE, '/'), '/') AS TYPE_PATH	-- 업로드 PATH
+		     , DEPTNO
+		  FROM DATA_TYPE
+		 WHERE 1 = 1
+		   AND STATUS = 'Y'
+	   <choose>
+       <when test="deptno != null and deptno != ''">
+           AND (DEPTNO = 'COM' OR DEPTNO = #{deptno})
+       </when>
+       <otherwise>
+           AND DEPTNO = 'COM'
+       </otherwise>
+   </choose>	          
+	    START WITH UP_TYPE_CODE IS NULL
+	   CONNECT BY PRIOR TYPE_CODE = UP_TYPE_CODE
+		 ORDER SIBLINGS BY TO_NUMBER(TYPE_ORDER)
+    </select>
+    
+    <!-- 자료실 페이징 -->
+    <select id="selectDataBoard" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT ROWNUM AS NO
+	         , DATA_SEQ
+	         , CATE_ID
+	         , TITLE
+	         , CONTENTS
+	         , ATTACH_FILE_SEQ
+	         , VIEW_CNT
+	         , TO_CHAR(REGI_DATE, 'YYYY-MM-DD HH24:MI:SS') AS REGI_DATE
+	         , INWRITER_ID AS EMPNO
+	         , EMP_NAME
+	         , MAX_CNT
+	         , CEIL(MAX_CNT / #{pagePerRow}) AS TOTAL_PAGE
+	    FROM (
+	        SELECT 
+	              b.DATA_SEQ
+	            , b.CATE_ID
+	            , b.TITLE
+	            , b.CONTENTS
+	            , b.ATTACH_FILE_SEQ
+	            , b.VIEW_CNT
+	            , b.REGI_DATE
+	            , b.INWRITER_ID
+	            , e.NAME AS EMP_NAME
+	            , COUNT(*) OVER() AS MAX_CNT
+	        FROM DATA_BOARD b
+	        LEFT JOIN EMPLOYEE e
+	               ON b.INWRITER_ID = e.EMPNO
+	        WHERE 1 = 1
+	          AND b.DEL_YN = 'N'
+          <if test="cateId != null and cateId != ''">
+              AND b.CATE_ID = #{cateId}
+          </if>	
+          <!-- 🔹 기간 조건 -->
+          <if test="startDate != null and startDate != ''">
+              AND b.REGI_DATE &gt;= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+          </if>
+          <if test="endDate != null and endDate != ''">
+              AND b.REGI_DATE &lt;= TO_DATE(#{endDate}, 'YYYY-MM-DD') + 0.99999
+          </if>	
+          <!-- 🔹 등록자 검색 -->
+          <if test="empName != null and empName != ''">
+              AND e.NAME LIKE '%' || #{empName} || '%'
+          </if>	
+          <!-- 🔹 제목 검색 -->
+          <if test="title != null and title != ''">
+              AND b.TITLE LIKE '%' || #{title} || '%'
+          </if>	
+	        ORDER BY b.DATA_SEQ DESC
+	    )
+	    OFFSET (#{pageNum} - 1) * #{pagePerRow} ROWS
+	    FETCH NEXT #{pagePerRow} ROWS ONLY     
+    </select>
+    
+    <!-- 자료실 Insert Update -->
+    <insert id="upsertDataBoard" parameterType="map">
+	    MERGE INTO PDNM.DATA_BOARD T
+	    USING (
+	        SELECT 
+	              NVL(#{dataSeq}, SEQ_DATA_BOARD.NEXTVAL) AS DATA_SEQ
+	            , #{cateId}        AS CATE_ID
+	            , #{title}         AS TITLE
+	            , #{contents}      AS CONTENTS
+	            , #{attachFileSeq} AS ATTACH_FILE_SEQ
+	            , #{writerId}      AS WRITER_ID
+	        FROM DUAL
+	    ) S
+	    ON (T.DATA_SEQ = S.DATA_SEQ)
+	
+	    WHEN MATCHED THEN
+	        UPDATE SET
+	              T.CATE_ID     = S.CATE_ID
+	            , T.TITLE       = S.TITLE
+	            , T.CONTENTS    = S.CONTENTS
+	            , T.UPDATE_DATE = SYSDATE
+	            , T.UPWRITER_ID = S.WRITER_ID
+	
+	    WHEN NOT MATCHED THEN
+	        INSERT (
+	              DATA_SEQ
+	            , CATE_ID
+	            , TITLE
+	            , CONTENTS
+	            , VIEW_CNT
+	            , DEL_YN
+	            , REGI_DATE
+	            , INWRITER_ID
+	        )
+	        VALUES (
+	              S.DATA_SEQ
+	            , S.CATE_ID
+	            , S.TITLE
+	            , S.CONTENTS
+	            , 0
+	            , 'N'
+	            , SYSDATE
+	            , S.WRITER_ID
+	        )
+	</insert>
+    
+    <!-- DATA_BOARD 수정 : 삭제 -->
+    <update id="deleteFile" parameterType="HashMap">
+		UPDATE DATA_BOARD
+           SET USE_YN = 'Y'
+             , DELETE_ID = #{writerId}
+             , DELETE_DATE = SYSDATE
+         WHERE DATA_SEQ = #{dataSeq}
+	</update>
+	
+	<!-- 조회수 증가 -->
+	<update id="increaseViewCnt" parameterType="long">
+	    UPDATE DATA_BOARD
+	       SET VIEW_CNT = NVL(VIEW_CNT, 0) + 1
+	     WHERE DATA_SEQ = #{dataSeq}
+	</update>
+
+</mapper>

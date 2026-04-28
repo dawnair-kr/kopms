@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- 로그 경로 진주서버의 실제 전체 경로로 변경해야함 -->
+    <property name="LOG_PATH" value="/home/bren/kopms/logs"/>
+    <property name="LOG_FILE_NAME" value="kopms_api"/>
+
+    <!-- 로그 패턴 -->
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"/>
+
+    <!-- 콘솔 로그 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 파일 로그 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${LOG_FILE_NAME}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+        	<!-- 파일 이름 패턴 -->
+            <fileNamePattern>
+                ${LOG_PATH}/${LOG_FILE_NAME}.%d{yyyy-MM-dd}.%i.log.gz
+            </fileNamePattern>
+            <!-- 로그 파일의 최대 크기 제한 -->
+			<maxFileSize>10MB</maxFileSize>
+            <!-- 30일 보관 -->
+            <maxHistory>30</maxHistory>
+            <!-- 물리적 전체 용량 -->
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 패키지 로그 레벨 -->
+    <logger name="com.koen" level="DEBUG"/>
+    <logger name="org.springframework" level="OFF"/>
+    <logger name="org.mybatis" level="OFF"/>
+    <logger name="org.apache" level="OFF"/>
+    <logger name="org.hibernate" level="OFF"/>
+    <logger name="sun.rmi" level="OFF"/>
+    <logger name="javax" level="OFF"/>
+    <logger name="com.zaxxer" level="OFF"/>
+    <logger name="jdbc.audit" level="OFF"/>
+    <logger name="jdbc.sqltiming" level="DEBUG" />  <!--OFF면 쿼리가 안나와-->
+
+    <!-- Root 로그 -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+    
+    <!-- 환경별 : local -->
+	<springProfile name="local">
+		<logger name="com.koen" level="DEBUG" />		
+		<logger name="jdbc.sqlonly" level="OFF" />
+		<logger name="jdbc.audit" level="OFF" />
+		<logger name="jdbc.resultset" level="OFF" />
+		<logger name="jdbc.resultsettable" level="OFF" />
+		<logger name="com.alibaba" level="ERROR" />
+		<!--logger name="log4jdbc.log4j2" level="ERROR" /-->
+		<root level="DEBUG">
+			<appender-ref ref="CONSOLE" />
+			<appender-ref ref="FILE" />
+		</root>
+	</springProfile>
+
+	<!-- 환경별 : dev -->
+	<springProfile name="test">	
+		<logger name="com.koen" level="DEBUG" />
+		<logger name="jdbc.sqlonly" level="OFF" />
+		<logger name="jdbc.audit" level="OFF" />
+		<logger name="jdbc.resultset" level="OFF" />
+		<logger name="jdbc.resultsettable" level="OFF" />
+		<logger name="com.alibaba" level="ERROR" />
+		<!--logger name="log4jdbc.log4j2" level="ERROR" /-->
+		<root level="DEBUG">
+			<appender-ref ref="CONSOLE" />
+			<appender-ref ref="FILE" />
+		</root>
+	</springProfile>
+
+	<!-- 환경별 : prod -->
+	<springProfile name="prod">	
+		<logger name="com.koen" level="DEBUG" />
+		<logger name="jdbc.sqlonly" level="OFF" />
+		<logger name="jdbc.audit" level="OFF" />
+		<logger name="jdbc.resultset" level="OFF" />
+		<logger name="jdbc.resultsettable" level="OFF" />
+		<logger name="com.alibaba" level="ERROR" />
+		<!--logger name="log4jdbc.log4j2" level="ERROR" /-->
+		<root level="DEBUG">
+			<appender-ref ref="CONSOLE" />
+			<appender-ref ref="FILE" />
+		</root>
+	</springProfile>
+
+</configuration>

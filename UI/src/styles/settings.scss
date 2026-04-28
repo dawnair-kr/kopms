@@ -1,0 +1,958 @@
+$kopms-body-font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+
+// 여기에 오버라이드할 변수 작성 (없어도 @use 문은 필수)
+@use 'vuetify/settings' with (
+  $body-font-family: $kopms-body-font-family,
+  $avatar-line-height: 1,
+  $line-height-root: 1.3 // 루트 행간 (기본 행간)
+);
+
+@font-face {
+  font-family: 'Pretendard Variable';
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/Pretendard-1.3.9/woff2/PretendardVariable.woff2') format('woff2-variations');
+};
+
+@font-face {
+  font-family: 'Pretendard-Regular';
+  src: url('/fonts/Pretendard-1.3.9/woff/Pretendard-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+};
+
+html {
+  overflow-y: auto;
+  font-size: 0.875rem;
+};
+
+.v-container {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 0;
+
+  &.main-page-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    width: calc(100% - 16px) !important;
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06),
+                0 1px 2px rgba(0, 0, 0, 0.04);
+    margin: 8px;
+    height: calc(100% - 69px);
+  }
+};
+
+// mdi-plus-circle
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+};
+
+::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: #c0c0c0;
+  color: #c0c0c0;
+  -webkit-box-shadow: 0 0 1px #ffffff80;
+};
+
+// 1. 기본 버튼 스타일 (Primary 배경 및 글자색)
+.v-btn--variant-flat {
+  background-color: #004098 !important; // 가이드 Deep Blue
+  color: #FFFFFF !important;            // 글자색 흰색
+  border-radius: 4px !important;          // 가이드의 둥근 모서리
+  text-transform: none !important;        // 대문자 강제 변환 방지
+  font-weight: 600 !important;            // SemiBold 적용
+
+  // Vuetify 내부의 배경 오버레이를 제거해야 설정한 색상이 선명하게 나옵니다.
+  .v-btn__overlay {
+    --v-hover-opacity: 0; // 호버 시 흐려짐 방지
+    display: none;
+  }
+
+  // [추가] 선택되어 활성화된 상태의 스타일
+  &.is-active {
+    background-color: #54C3F1 !important; // 활성화: Sky Blue
+    color: #FFFFFF !important;
+    
+    // 선택된 상태에서 호버할 때 조금 더 진하게
+    &:hover {
+      background-color: #38b0e5 !important; 
+    }
+  }
+  
+  // 2. Hover 상태: 하늘색으로 변경
+  &:hover {
+    background-color: #54C3F1 !important; // 가이드 Sky Blue
+  }
+
+  // 3. Inactive 상태: 회색으로 변경
+  &:disabled {
+    background-color: #B6B6B6 !important; // 가이드 Grey
+    color: #FFFFFF !important;
+    opacity: 1 !important;
+  }
+};
+
+// 2. outline 버튼 스타일
+.v-btn--variant-outlined {
+  background-color: transparent !important;
+  color: #00A5DB !important;
+  border: 1px solid #00A5DB !important;
+  box-shadow: none !important;
+
+  .v-btn__overlay {
+    opacity: 0 !important;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: rgba(0, 165, 219, 0.08) !important;
+  }
+
+  &:active:not(:disabled) {
+    background-color: rgba(0, 165, 219, 0.12) !important;
+  }
+
+  &:disabled {
+    background-color: transparent !important;
+    border-color: #E0E0E0 !important;
+    color: #BDBDBD !important;
+  }
+}
+
+// 3. Secondary 스타일 (가이드의 연한 하늘색 버튼)
+.v-btn.v-btn--variant-tonal {
+  background-color: #92A8F4 !important; // Light Blue
+  color: #004098 !important;            // 텍스트는 Deep Blue
+  font-weight: 600 !important;            // SemiBold 적용
+  
+  &:hover {
+    background-color: #54C3F1 !important;
+    color: #FFFFFF !important;
+  }
+};
+
+
+// READONLY STYLES
+// [방법 A] Vuetify :readonly prop 자동 적용 - .v-input--readonly 클래스 전역 스타일링
+// v-text-field, v-select, v-textarea 등에 :readonly="true" 시 자동 적용됨
+.v-input--readonly {
+  .v-field {
+    background-color: #f5f5f5 !important;
+
+    .v-field__input {
+      color: #555555;
+      cursor: default;
+    }
+
+    .v-field__outline {
+      --v-field-border-opacity: 0.4;
+    }
+  }
+}
+
+// v-radio-group은 :readonly 적용 시 시각적 변화가 없으므로 별도 처리
+.v-radio-group.v-input--readonly {
+  .v-selection-control {
+    pointer-events: none;
+  }
+
+  .v-label {
+    color: #888888 !important;
+    opacity: 1 !important;
+  }
+}
+
+
+// [방법 B] 커스텀 클래스 - 선택적 적용 시 :class="{ 'field-readonly': isReadonly }" 바인딩 필요
+// .field-readonly {
+//   .v-field {
+//     background-color: #f5f5f5 !important;
+
+//     .v-field__input {
+//       color: #555555;
+//       cursor: default;
+//     }
+
+//     .v-field__outline {
+//       --v-field-border-opacity: 0.4;
+//     }
+//   }
+// }
+
+/* =========================================================
+   AppBar Layout
+========================================================= */
+
+/* ── AppBar 배경 ── */
+.v-app-bar {
+  position: relative;
+
+  /* 가장자리(사방) → 중앙(흰색) 방사형 그라데이션 */
+  background: radial-gradient(
+    ellipse at center,
+    #ffffff  0%,
+    #e8f7fd 45%,
+    #cfeffc 100%
+  ) !important;
+
+  border-bottom: 1px solid rgba(0,157,220,0.25);
+  box-shadow: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+
+    width: 100%;
+    height: 1px;
+
+    background: linear-gradient(
+      to right,
+      rgba(0,157,220,0),
+      rgba(0,157,220,0.4),
+      rgba(0,157,220,0)
+    );
+  }
+}
+
+
+/* =========================================================
+   AppBar Menu
+========================================================= */
+
+/* v-app-bar 내부 컨테이너의 overflow 해제 — 버튼 ::before 체브론이 잘리지 않도록 */
+.v-app-bar .v-toolbar__content {
+  overflow: visible !important;
+}
+
+/* ── 상단 메뉴 래퍼 ── */
+.appbar-menu-wrapper {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  overflow: visible;
+}
+
+
+/* ── 1레벨 메뉴 버튼 (v-btn) ── */
+.appbar-top-btn {
+
+  position: relative !important;
+  height: 48px !important;
+  padding: 0 20px !important;
+  border-radius: 0 !important;
+
+  color: #009DDC !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+
+  overflow: visible !important;
+
+  transition: color 0.15s ease;
+
+  /* Vuetify overlay 제거 */
+  .v-btn__overlay,
+  .v-btn__underlay {
+    display: none !important;
+  }
+
+  /* Hover */
+  &:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #004098 !important;
+    font-weight: 700;
+  }
+
+  /* Active */
+  &.menu-active {
+    color: #000000 !important;
+    font-weight: 700 !important;
+    
+    &:hover {
+      background: transparent !important;
+      background-color: transparent !important;
+      color: #004098 !important;
+      font-weight: 700;
+    }
+  }
+
+}
+
+
+/* ── 활성 메뉴 인디케이터 (글로우 바 ) ── */
+.menu-indicator {
+  position: absolute !important;
+  bottom: -1px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+
+  width: 100% !important;
+  height: 4px !important;
+  border-radius: 50% !important;
+
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 157, 220, 0.6) 20%,
+    rgba(0, 157, 220, 0.95) 50%,
+    rgba(0, 157, 220, 0.6) 80%,
+    transparent 100%
+  ) !important;
+
+  pointer-events: none !important;
+  z-index: 10 !important;
+}
+
+
+/* =========================================================
+   Dropdown Menu
+========================================================= */
+
+/* ── 드롭다운 목록 ── */
+.appbar-dropdown {
+
+  padding: 6px 0 !important;
+  min-width: 200px;
+
+  border-radius: 6px !important;
+
+  box-shadow:
+    0 6px 18px rgba(0,0,0,0.08),
+    0 2px 6px rgba(0,0,0,0.06) !important;
+
+  backdrop-filter: blur(2px);
+
+}
+
+
+/* ── 2 · 3레벨 메뉴 아이템 ── */
+.appbar-sub-item {
+
+  min-height: 40px !important;
+  padding: 0 16px !important;
+
+  font-size: 14px !important;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  transition: background 0.12s ease;
+
+  &:hover {
+    background-color: rgba(0,157,220,0.08) !important;
+  }
+
+  &.menu-active {
+    color: #004098 !important;
+    font-weight: 600 !important;
+    background-color: rgba(0,64,152,0.03) !important;
+  }
+
+}
+
+
+/* =========================================================
+   Dropdown Animation
+========================================================= */
+
+.appbar-dropdown {
+  animation: menuFade 0.16s ease;
+}
+
+@keyframes menuFade {
+
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+}
+
+/* ── 섹션 헤더 (공통) ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: linear-gradient(90deg, #eef3fc 0%, #f8faff 100%);
+  border: 1px solid #c5d5f0;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+.section-title {
+  margin-left: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+}
+
+/* ── 필수입력항목 ── */
+.required {
+  font-weight: 700;
+}
+.required::after {
+  content: '*';
+  color: #f44336;
+  margin-left: 2px;
+}
+
+// ============================================================
+// 폼 화면 공통 스타일 (입력 폼 전역 기준)
+// ============================================================
+
+// 카드 컨테이너
+.form-card {
+  background-color: #ffffff;
+  box-shadow: 0 0 0 1px #cfd8dc, 0 0 8px 2px rgba(176, 190, 197, 0.3) !important;
+}
+
+// 섹션 헤더
+.form-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a237e;
+}
+
+.section-bar {
+  width: 4px;
+  height: 18px;
+  background: #1565c0;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+// 필드 아이템 (레이블 위, 인풋 아래)
+.field-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  .v-radio .v-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+    letter-spacing: 0.01em;
+  }
+}
+
+.field-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+
+// v-row를 CSS Grid로 변환하는 래퍼 클래스 — flex:N 대신 사용 (gap 정렬 보장)
+// col-span-2/3 유틸리티와 함께 사용
+// 예: <div class="form-grid-4"><v-row no-gutters class="ga-6"><v-col class="col-span-2">...
+.form-grid-4 {
+  .v-row {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr);
+    flex-wrap: unset !important;
+  }
+}
+
+.form-grid-5 {
+  .v-row {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr);
+    flex-wrap: unset !important;
+  }
+}
+
+.form-grid-6 {
+  .v-row {
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr);
+    flex-wrap: unset !important;
+  }
+}
+
+.col-span-2 { grid-column: span 2; }
+.col-span-3 { grid-column: span 3; }
+
+// 토글 버튼 그룹 (선택형 필드 — 라디오 대체)
+.v-btn-toggle {
+  &.v-btn-group--density-compact.v-btn-group {
+    height: 32px;
+  }
+}
+
+.toggle-group {
+  border: 1px solid #dde3ea !important;
+  border-radius: 8px;
+  overflow: hidden;
+  width: fit-content;
+  padding: 2px !important;
+  background-color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+  gap: 2px;
+
+  .v-btn-group__btn {
+    border-inline-end: none !important;
+  }
+
+  .toggle-btn {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b !important;
+    background-color: transparent !important;
+    border-radius: 6px !important;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 0 14px !important;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    &::before, .v-btn__overlay { opacity: 0 !important; }
+  }
+
+  .toggle-btn.v-btn--active {
+    background-color: #1565c0 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+    &::before, .v-btn__overlay { opacity: 0 !important; }
+  }
+
+  .toggle-btn-danger.v-btn--active {
+    background-color: #c62828 !important;
+    color: #ffffff !important;
+    &::before { opacity: 0 !important; }
+    .v-btn__overlay { opacity: 0 !important; }
+  }
+
+  &.toggle-group--error {
+    border: 1px solid rgb(var(--v-theme-error)) !important;
+  }
+}
+
+// v-form rules를 지원하지 않는 커스텀 컴포넌트(토글, 파일첨부 등)의 인라인 에러 메시지
+.field-error-msg {
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-error));
+}
+
+// 필드 단위 텍스트 (append-inner 등에 사용)
+.form-unit {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  margin-right: 6px;
+}
+
+// 테이블/컨텐츠 영역 공통 래퍼 (border + shadow + rounded corners)
+.br-table-wrap {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e8edf5;
+  box-shadow: 0 0 0 1px #cfd8dc, 0 0 8px 2px rgba(176, 190, 197, 0.3);
+}
+
+// ApexCharts 클릭 시 outline 제거 (전역)
+.apexcharts-canvas svg,
+.apexcharts-canvas {
+  outline: none !important;
+}
+
+// v-chip 전역 스타일
+.v-chip {
+  border-color: #cfd8dc !important;
+  box-shadow: 0 1px 3px rgba(176, 190, 197, 0.25) !important;
+  color: #004098 !important;
+  font-weight: 600 !important;
+}
+
+.chip-active.v-chip {
+  background-color: #1565c0 !important;
+  color: #ffffff !important;
+  border-color: #1565c0 !important;
+  box-shadow: 0 1px 3px rgba(21, 101, 192, 0.2) !important;
+}
+
+//////////////////////////////// KOPMS ORIGINAL ////////////////////////////////
+.v-card {
+  //border: 1px solid #97a9de;
+  -webkit-box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+
+  // border-color: #afb1b5;
+  &.sub-card {
+    border-top-width: 6px;
+
+    .v-card-item {
+      .v-card-item__content {
+        .v-card-title {
+          .v-divider {
+            border-color: #afb1b5;
+          }
+        }
+      }
+    }
+  }
+
+  .v-card-text {
+    padding: 0px;
+  }
+
+  //컨텐츠 박스 그리드 버튼
+  .v-card-actions button {
+    min-height: 34px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+}
+
+.v-expansion-panel-text__wrapper {
+  padding: 8px;
+}
+
+.v-expansion-panel {
+  --v-expansion-panel-active-title-min-height: 32px;
+  --v-expansion-panel-text-padding: 4px 4px 4px 4px;
+  --v-expansion-panel-title-font-size: 0.9rem;
+  --v-expansion-panel-title-min-height: 36px;
+  --v-expansion-panel-title-padding: 4px 4px
+}
+
+.v-expansion-panel-title {
+  min-height: 36px;
+  background-color: #ebebeb;
+  font-weight: bold;
+  font-size: 0.9rem;
+  padding: 4px 10px;
+  color: #000000;
+}
+
+.v-expansion-panel--active>.v-expansion-panel-title:not(.v-expansion-panel-title--static) {
+  min-height: 36px;
+  background-color: #ebebeb;
+}
+
+.v-textarea {
+  .v-field .v-field__field .v-field__input {
+    padding-top: 8px;
+  }
+}
+
+.v-text-field {
+  --v-text-field-details-padding-inline: 8px;
+  --v-text-field-input-padding-start: 4px;
+
+  .v-field .v-field-label {
+    font-size: 0.7rem;
+    color: #515151;
+  }
+
+  &.v-input--density-compact .v-field--variant-outlined,
+  &.v-input--density-compact .v-field--single-line,
+  &.v-input--density-compact .v-field--no-label {
+    --v-field-padding-bottom: 0px;
+    --v-field-padding-top: 2px;
+  }
+
+  .v-field__field {
+    .v-field__input {
+      min-height: 28px;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+  }
+
+  .v-field__prepend-inner {
+    padding-top: 2px;
+  }
+
+  .v-field__append-inner {
+    padding-top: 2px;
+  }
+
+  &.number {
+    .v-field {
+      .v-field__input {
+        text-align: right;
+      }
+    }
+  }
+}
+
+.v-checkbox {
+  --v-input-control-height: 30px;
+  --v-input-padding-top: 4px;
+
+  .v-input__control {
+    .v-label {
+      color: black;
+      font-size: 0.8rem;
+    }
+
+    .v-selection-control__wrapper {
+      --v-medium-emphasis-opacity: 1.0;
+
+      .v-selection-control--density-default {
+        --v-selection-control-size: 30px;
+      }
+    }
+  }
+}
+
+.v-list .v-list-item {
+  --v-list-item-icon-size: 10px;
+  --v-hover-opacity: 0.15;
+}
+
+.v-list-item__prepend>.v-icon~.v-list-item__spacer {
+  width: 8px;
+}
+
+.pageperrows {
+
+  .v-field,
+  .v-label {
+    font-size: 1.0em;
+    padding-right: 0px;
+    --v-field-padding-bottom: 2px;
+    --v-field-padding-start: 15px;
+    --v-field-padding-end: 2px;
+  }
+
+  .v-list,
+  &.v-list {
+    .v-list-item {
+      min-height: 24px;
+
+      .v-list-item-title {
+        font-size: 0.8em;
+        padding-top: 3px;
+        line-height: 1.2;
+      }
+    }
+  }
+
+  .v-select {
+
+    .v-select__selection-text {
+      font-size: 0.8em;
+      padding-bottom: 2px;
+      --v-field-padding-start: 10px;
+    }
+
+    .v-input__append {
+      margin-inline-start: 6px;
+      font-size: 0.8rem;
+      align-self: center;
+    }
+
+    .v-list .v-list-item {
+      min-height: 20px;
+    }
+
+    .v-list .v-list-item .v-list-item-title {
+      font-size: 0.8em;
+      line-height: 1.2;
+    }
+
+  }
+}
+
+.v-select {
+
+  --v-input-control-height: 36px;
+  --v-field-padding-top: 2px;
+  --v-input-padding-top: 2px;
+
+  .v-input__control {
+    .v-field {
+      --v-field-padding-top: 4px;
+      --v-field-padding-bottom: 4px;
+    }
+  }
+
+  .v-select__selection-text {
+    font-size: 1.0rem;
+    --v-field-padding-start: 10px;
+  }
+
+  .v-input__append {
+    margin-inline-start: 6px;
+    font-size: 0.8rem;
+  }
+
+  .v-list .v-list-item {
+    min-height: 20px;
+  }
+
+  .v-list .v-list-item .v-list-item-title {
+    font-size: 0.9rem;
+    line-height: 1.8;
+  }
+}
+
+.v-autocomplete {
+
+  //--v-input-control-height: 36px;
+  //--v-field-padding-top: 2px;
+  --v-input-padding-top: 2px;
+
+  .v-input__control {
+    .v-field {
+      --v-field-padding-top: 4px;
+      --v-field-padding-bottom: 4px;
+    }
+  }
+
+  .v-autocomplete__selection-text {
+    font-size: 1.0rem;
+    --v-field-padding-start: 10px;
+  }
+
+  .v-input__append {
+    margin-inline-start: 6px;
+    font-size: 0.8rem;
+  }
+
+  .v-list .v-list-item {
+    min-height: 20px;
+  }
+
+  .v-list .v-list-item .v-list-item-title {
+    font-size: 0.9rem;
+    line-height: 1.3;
+  }
+}
+
+.v-data-table {
+  --v-table-header-height: 40px;
+  --v-table-row-height: 40px;
+
+  .v-table__wrapper .v-data-table__th {
+    background-color: #e8edf5 !important;
+
+    .v-data-table-header__content {
+      color: #1a237e;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+  }
+
+  /* Row */
+  .v-data-table__tr {
+    cursor: pointer;
+  }
+
+  /* Hover */
+  .v-data-table__tr:hover {
+    background-color: rgba(0, 157, 220, 0.1);
+  }
+
+  /* Selected */
+  .v-data-table__tr.selected-row {
+    background-color: rgba(0, 64, 152, 0.12);
+  }
+
+  .v-table__wrapper>table>thead>tr>th:not(:last-child) {
+    border-right: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+
+  .v-table__wrapper>table>tbody>tr>td:not(:last-child),
+  .v-table__wrapper>table>tbody>tr>th:not(:last-child) {
+    border-right: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+
+  .v-text-field {
+    &.v-textarea {
+      .v-field__input {
+        padding-top: 4px;
+      }
+    }
+
+    .v-field {
+      --v-text-field-details-padding-inline: 4px;
+      --v-text-field-input-padding-start: 2px;
+      --v-input-control-height: 36px;
+      --v-input-padding-top: 10px;
+
+      .v-field__field {
+        .v-label {
+          font-size: 0.8rem;
+          padding-right: 0px;
+          --v-field-padding-bottom: 2px;
+          --v-field-padding-start: 15px;
+          --v-field-padding-end: 2px;
+        }
+
+        .v-field__input {
+          font-size: 1.0rem;
+        }
+      }
+    }
+  }
+
+}
+
+// Top layout 변경
+header .v-toolbar__content {
+  -webkit-box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+}
+
+// notice
+.system-notice .v-banner--density-default {
+  background-color: #ffe7dd !important;
+  border-radius: 10px;
+  height: 50px !important;
+  z-index: 1;
+  margin-left: 0px;
+  width: calc(100% - 0px);
+}
+
+.v-banner {
+  border: 0px;
+
+  .v-banner__prepend {
+    margin-inline-end: 0px;
+  }
+}
+
+// 로그인
+.login_area {
+  .v-card {
+    border: 1px solid #c6c6c6 !important;
+    -webkit-box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .v-btn {
+    &.login_bu {
+      width: 100%;
+    }
+  }
+}
+
+//로그인 크롬 자동완성 배경색 삭제
+.login_area .v-row .v-col .v-card .v-input__control input:-webkit-autofill,
+.login_area .v-row .v-col .v-card .v-input__control input:-webkit-autofill:hover,
+.login_area .v-row .v-col .v-card .v-input__control input:-webkit-autofill:focus,
+.login_area .v-row .v-col .v-card .v-input__control input:-webkit-autofill:active {
+  transition: background-color 5000s ease-in-out 0s;
+  -webkit-transition: background-color 9999s ease-out;
+  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+  -webkit-text-fill-color: #111111 !important;
+}

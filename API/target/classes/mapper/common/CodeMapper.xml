@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.koen.kopms_api.common.code.dao.CodeDao">
+	
+    <select id="selectCodeGroupV" parameterType="string" resultType="CodeGroupVO">
+        SELECT CODE_GROUP, CODE_GROUP_NAME, USE_YN 
+          FROM COME_CODE_GROUP
+          WHERE 1 = 1
+           <if test='groupCode != null and groupCode != ""'>
+           AND CODE_GROUP = #{groupCode}
+           </if>
+           <if test='useYn != null and useYn != ""'>
+           AND USE_YN = #{useYn}
+           </if>
+    </select>
+    
+     <select id="selectCodeListV" parameterType="string" resultType="CodeVO">
+        SELECT CODE_GROUP, CODE_VALUE, CODE_NAME, UP_CODE_CODE 
+        	 , SORT_ORDER, CODE_PROP, CODE_EXP, USE_YN
+		  FROM COM_CODE
+         WHERE 1 = 1
+           <if test='groupCode != null and groupCode != ""'>
+           AND CODE_GROUP = #{groupCode}
+           </if>
+           AND USE_YN = 'Y'           
+    </select>
+        
+    <select id="selectGroupCode" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT CODE_GROUP, CODE_GROUP_NAME, USE_YN 
+          FROM COME_CODE_GROUP
+          WHERE 1 = 1
+           <if test='groupCode != null and groupCode != ""'>
+           AND CODE_GROUP = #{groupCode}
+           </if>
+           <if test='useYn != null and useYn != ""'>
+           AND USE_YN = #{useYn}
+           </if>
+    </select>
+    
+    <select id="selectGroupCodeList" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT CODE_GROUP, CODE_GROUP_NAME, USE_YN 
+          FROM COME_CODE_GROUP
+          WHERE 1 = 1
+           <if test='groupCode != null and groupCode != ""'>
+           AND CODE_GROUP = #{groupCode}
+           </if>
+           <if test='useYn != null and useYn != ""'>
+           AND USE_YN = #{useYn}
+           </if>
+    </select>
+        
+    <select id="selectCode" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT CODE_GROUP, CODE_VALUE, CODE_NAME, UP_CODE_CODE 
+        	 , SORT_ORDER, CODE_PROP, CODE_EXP, USE_YN
+          FROM COM_CODE
+         WHERE 1 = 1
+           <if test='groupCode != null and groupCode != ""'>
+           AND CODE_GROUP = #{groupCode}
+           </if>
+           <if test='codeValue != null and codeValue != ""'>
+           AND CODE_VALUE = #{codeValue}
+           </if>
+           <if test='useYn != null and useYn != ""'>
+           AND USE_YN = #{useYn}
+           </if>           
+          ORDER BY CODE_GROUP, SORT_ORDER           
+    </select>
+    
+    <select id="selectCodeList" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT CODE_GROUP, CODE_VALUE, CODE_NAME, UP_CODE_CODE 
+        	 , SORT_ORDER, CODE_PROP, CODE_EXP, USE_YN
+          FROM COM_CODE
+         WHERE 1 = 1
+           <if test='groupCode != null and groupCode != ""'>
+           AND CODE_GROUP = #{groupCode}
+           </if>
+           <if test='useYn != null and useYn != ""'>
+           AND USE_YN = #{useYn}
+           </if>           
+          ORDER BY CODE_GROUP, SORT_ORDER           
+    </select>
+    
+    <!-- 페이징 테스트 -->
+    <select id="selectCodePage" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT ROWNUM AS SEQ
+			 , CODE_GROUP, CODE_VALUE, CODE_NAME, UP_CODE_CODE 
+		     , SORT_ORDER, CODE_PROP, CODE_EXP, USE_YN
+		     , MAX_CNT
+		     , CEIL(MAX_CNT / #{pagePerRow} ) AS TOTAL_PAGE
+		FROM (
+		     SELECT CODE_GROUP, CODE_VALUE, CODE_NAME, UP_CODE_CODE 
+		          , SORT_ORDER, CODE_PROP, CODE_EXP, USE_YN
+		          , COUNT(*) OVER() AS MAX_CNT
+		       FROM COM_CODE
+		      WHERE 1 = 1
+		        <if test='groupCode != null and groupCode != ""'>
+		        AND CODE_GROUP = #{groupCode}
+		        </if>
+		        <if test='useYn != null and useYn != ""'>
+	            AND USE_YN = #{useYn}
+	            </if>   
+		      ORDER BY SORT_ORDER DESC
+		)
+		OFFSET (#{pageNum} - 1) * #{pagePerRow} ROWS
+		FETCH NEXT #{pagePerRow} ROWS ONLY         
+    </select>
+    
+</mapper>

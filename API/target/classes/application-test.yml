@@ -1,0 +1,127 @@
+# dev [local , dev , prod]
+#Spring Boot 내장 WAS(Tomcat) 설정 영역
+server:
+  port: 9040
+  servlet:
+    context-path: / # API 루트 경로
+    session:
+      timeout: 60m  # Vue에서 작업 중 세션이 끊기지 않게 1시간 설정
+      #timeout: 2m  # Vue에서 작업 중 세션이 끊기지 않게 1시간 설정
+      cookie:
+        #secure: true   # HTTPS 환경에서만 쿠키 전송 (필수)
+        #same-site: lax # HTTPS 타 사이트에서의 쿠키 전송 제한 (CSRF 방지)
+        http-only: true # XSS 공격 방지 (JS에서 쿠키 접근 불가)
+
+
+spring:
+  application:
+    name: kopms-api
+  #profiles:
+    #active: local # activeProfile local 지정 [prod, dev, local]
+  #devtools:
+  #  livereload:
+  #    enabled: true
+  #  DB 연결, 전 환경 공통 HikariCP 기본 정책
+  datasource:  
+    #서울(남동) 개발실
+    #url: jdbc:log4jdbc:oracle:thin:@//192.168.5.3:1521/ORCLPDB2
+    #username: PDNM
+    #password: bren00807
+    #서울본사(남동) 개발DB
+    driverClassName: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+    url: jdbc:log4jdbc:oracle:thin:@//192.168.0.11:1521/ORCLPDB2
+    username: PDNM
+    password: bren00807
+
+    #남동 개발DB
+    #url: jdbc:log4jdbc:oracle:thin:@//10.131.81.226:59110/TNP
+    #username: NPDNM
+    #password: tlstkdjqrhksflDev_226
+    # driver-class-name: oracle.jdbc.OracleDriver
+    # HikariCP 상세 설정 추가
+    hikari:
+      # 트랜잭션 관리 시 false 권장
+      auto-commit: false
+      # 연결 유지 최대 시간 (단위: ms)s
+      # 30분(기본값:1800000)에서 18분(1080000 ms) 정도로 줄여서 테스트 권장
+      max-lifetime: 1080000
+      # 풀에서 연결을 꺼낼 때 대기하는 시간
+      connection-timeout: 30000
+      # connection 유효성 검사 시간
+      validation-timeout: 5000
+      # 연결이 유효한지 검사하는 쿼리 (Oracle 기준)
+      connection-test-query: SELECT 1 FROM DUAL
+      # 최소 유효 커넥션 수
+      minimum-idle: 2
+      # 최대 커넥션 수
+      maximum-pool-size: 10
+      # 10분
+      idle-timeout: 600000
+      # 20초 이상 connection 반환 안하면 로그 발생
+      leak-detection-threshold: 20000
+
+  # 파일 업로드
+  servlet:
+    multipart:
+      max-file-size: 50MB  # 개별 파일 하나의 최대 크기
+      max-request-size: 50MB  # HTTP 요청 전체의 최대 크기 (여러 파일 합계)
+    
+  # JSON 포맷
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Seoul
+    # 응답 데이터 중 null인 필드는 아예 보내지 않음 (데이터 용량 최적화)
+    default-property-inclusion: non_null
+
+file:
+  # 로컬 테스트 시에는 'C:/tech/attach/PDMN/upload/' 등 본인 환경에 맞게 수정
+  # 운영(Linux) 서버 기준 예시 <- 서버 OS의 실제 디스크 경로Spring Boot 실행 위치와 관계 없음]
+  # /tech/attach/PDMN/upload/
+  upload-dir: /tech/attach/PDNM/upload/
+  signkey-dir: /tech/attach/PDNM/signkey/
+
+# SSO 토큰 유효성 검증 : 추후 Url 변경 요함
+#sso:
+#  validate:
+#    url: https://portal.kopis.com/sso/validate
+#    fail-open: false
+#  http:
+#    connect-timeout: 2s
+#    response-timeout: 2s
+#    request-timeout: 2s
+#    max-total: 100
+#    max-per-route: 20
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.koen.kopms_api.common.util, com.koen.kopms_api.model.vo
+
+  configuration:
+    map-underscore-to-camel-case: true
+    call-setters-on-nulls: true
+    #log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 콘솔에 SQL 출력
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl  # SLF4J로 지정 logback-spring.xml 설정이 적용
+    jdbc-type-for-null: VARCHAR
+
+logging:
+  config: classpath:logback-test.xml
+
+app:
+  cors:
+    allowed-origins: "http://192.168.0.23:9040" #http://localhost:5173, http://localhost:3000" #"https://pms.koen.co.kr" "http://192.168.0.23:9040"
+
+#Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+        - "*"
+  endpoint:
+    shutdown:
+      enabled: true
+    health:
+      show-details: ALWAYS
+  health:
+    redis:
+      enabled: false

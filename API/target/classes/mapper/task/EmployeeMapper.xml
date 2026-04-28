@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.koen.kopms_api.task.employee.dao.EmployeeDao">
+	
+    <!-- 사원정보  -->
+    <select id="selectEmployee" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT e.EMPNO		, e.NAME		, e.LEVELNO		, e.CLASSNO		, e.MAILNO		
+			 , e.INTELNO	, e.HOSTNAME	, e.NOTREMOVE	, e.EMP_ORDER	, e.DOWNLOAD
+			 , e.LEVELDATE	, e.TITLE		, e.EXIST		, e.IPADDR		, e.M_COUNT
+			 , e.EXFAXNO	, e.MOBILE_PHN	, e.JIKGUB_NAME	, e.VPN_YN		, e.USER_GUBUN
+			 , e.DEPTNO		, e.EXTELNO
+			 , d.DEPT_NAME	, d.DEPT_GUBUN
+		  FROM EMPLOYEE e 
+		 INNER JOIN DEPT d 
+		    ON e.DEPTNO = d.DEPTNO
+		 WHERE 1 = 1
+		   <if test='empno != null and empno != ""'>
+           AND e.EMPNO = #{empno}
+           </if>
+           <if test='deptno != null and deptno != ""'>
+           AND e.DEPTNO = #{deptno}
+           </if>
+           <if test='name != null and name != ""'>
+           AND e.NAME LIKE '%' || #{name} || '%'
+           </if>
+           AND (e.EXIST IS NULL OR e.EXIST != '30')	-- 퇴직자
+		 ORDER BY e.DEPTNO, e.EMPNO
+    </select>
+    
+    <!-- 사원 저장 : 평가위원 -->
+	<insert id="insertEmploy" parameterType="HashMap">
+		INSERT INTO EMPLOYEE
+			 ( EMPNO, LEVELNO, CLASSNO, MAILNO, NAME
+			 , INTELNO, HOSTNAME, NOTREMOVE, EMP_ORDER, DOWNLOAD
+			 , LEVELDATE, TITLE, EXIST, IPADDR, M_COUNT
+			 , EXFAXNO, MOBILE_PHN, JIKGUB_NAME, VPN_YN, USER_GUBUN
+			 , DEPTNO, EXTELNO, REG_DATE
+			 )
+		VALUES
+			 ( #{empno}, #{levelno}, #{classno}, #{mailno}, #{name}
+			 , #{intelno}, #{hostname}, 0, 0, 0
+			 , #{leveldate}, #{title}, #{exist}, #{ipaddr}, #{mCount}
+			 , #{exfaxno}, #{mobilePhn}, #{jikgubName}, #{vpnYn}, #{userGubun}
+			 , #{deptno}, #{extelno}, SYSDATE
+			 )
+	</insert>
+	
+    <!-- 조직정보  저장
+	<insert id="upsertDept" parameterType="HashMap">
+		MERGE INTO DEPT t
+		USING (
+		    SELECT
+		        #{deptno,     jdbcType=VARCHAR} AS DEPTNO,
+		        #{upCode,     jdbcType=VARCHAR} AS UP_CODE,
+		        #{deptName,   jdbcType=VARCHAR} AS DEPT_NAME,
+		        #{deptOrder,  jdbcType=VARCHAR} AS DEPT_ORDER,
+		        #{minlevelno, jdbcType=VARCHAR} AS MINLEVELNO,
+		        #{manager,    jdbcType=VARCHAR} AS MANAGER,
+		        #{hostname,   jdbcType=VARCHAR} AS HOSTNAME,
+		        #{aliasName,  jdbcType=VARCHAR} AS ALIAS_NAME,
+		        #{deptGubun,  jdbcType=VARCHAR} AS DEPT_GUBUN,
+		        #{branchYn,   jdbcType=VARCHAR} AS BRANCH_YN
+		    FROM dual
+		) s
+		ON (t.DEPTNO = s.DEPTNO)
+		
+		WHEN MATCHED THEN
+		    UPDATE SET
+		        t.UP_CODE     = s.UP_CODE,
+		        t.DEPT_NAME   = s.DEPT_NAME,
+		        t.DEPT_ORDER  = s.DEPT_ORDER,
+		        t.MINLEVELNO  = s.MINLEVELNO,
+		        t.MANAGER     = s.MANAGER,
+		        t.HOSTNAME    = s.HOSTNAME,
+		        t.ALIAS_NAME  = s.ALIAS_NAME,
+		        t.DEPT_GUBUN  = s.DEPT_GUBUN,
+		        t.BRANCH_YN   = s.BRANCH_YN
+		
+		WHEN NOT MATCHED THEN
+		    INSERT (
+		        DEPTNO,
+		        UP_CODE,
+		        DEPT_NAME,
+		        DEPT_ORDER,
+		        MINLEVELNO,
+		        MANAGER,
+		        HOSTNAME,
+		        ALIAS_NAME,
+		        DEPT_GUBUN,
+		        REG_DATE,
+		        BRANCH_YN
+		    )
+		    VALUES (
+		        s.DEPTNO,
+		        s.UP_CODE,
+		        s.DEPT_NAME,
+		        s.DEPT_ORDER,
+		        s.MINLEVELNO,
+		        s.MANAGER,
+		        s.HOSTNAME,
+		        s.ALIAS_NAME,
+		        s.DEPT_GUBUN,
+		        SYSDATE,
+		        s.BRANCH_YN
+		    )
+	</insert>
+    -->
+    
+</mapper>

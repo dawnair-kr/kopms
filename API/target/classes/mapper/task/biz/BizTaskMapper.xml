@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.koen.kopms_api.task.biz.dao.BizDao">
+
+    <!-- ================================================================= -->
+    <!-- [1] 용역 기본정보 조회 (단건)                                           -->
+    <!-- ================================================================= -->
+
+	<select id="selectSVC" parameterType="HashMap" resultType="CamelHashMap">
+	    SELECT
+	        SVC_NAME,		MIKEP_DOC_NO,	SVC_DAYS,		CON_MTH,		EVALUATION,
+	        EVC_TEC,		EVC_PRC,		BID_TND_NO,		PQ_NO,			ELG_NO,
+	        CON_NO,			AFTER_TASK,
+	        TO_CHAR(REGI_DATE, 'YYYY-MM-DD') AS REGI_DATE,
+	        INWRITER_ID,
+	        TO_CHAR(UPDATE_DATE, 'YYYY-MM-DD') AS UPDATE_DATE,
+	        UPWRITER_ID,	RELATED_LIC
+	    FROM BIZ_SVC
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</select>
+
+    <!-- ================================================================= -->
+    <!-- [2] 용역 계약체결 목록 조회 (다건)                                       -->
+    <!-- ================================================================= -->
+
+	<select id="selectSVCCONList" parameterType="HashMap" resultType="CamelHashMap">
+	    SELECT
+	        ORDER_NO,	MIKEP_DOC_NO,	CONTRACTOR,	CON_AMT,
+	        TO_CHAR(SVC_START, 'YYYY-MM-DD') AS SVC_START,
+	        TO_CHAR(SVC_END, 'YYYY-MM-DD') AS SVC_END,
+	        CON_NO,
+	        TO_CHAR(REGI_DATE, 'YYYY-MM-DD') AS REGI_DATE,
+	        INWRITER_ID,
+	        TO_CHAR(UPDATE_DATE, 'YYYY-MM-DD') AS UPDATE_DATE,
+	        UPWRITER_ID
+	    FROM BIZ_SVC_CON
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	    ORDER BY ORDER_NO ASC
+	</select>
+
+    <!-- ================================================================= -->
+    <!-- [3] 인허가 기본정보 조회 (단건)                                          -->
+    <!-- ================================================================= -->
+
+	<select id="selectLIC" parameterType="HashMap" resultType="CamelHashMap">
+	    SELECT
+	        LIC_NAME,	LIC_ORG,		MIKEP_DOC_NO,	TO_CHAR(LIC_DATE, 'YYYY-MM-DD') AS LIC_DATE,
+	        PIC_NAME,	PIC_POS,		PIC_TEL,		PIC_EMAIL,		AFTER_TASK,
+	        REGI_DATE,	INWRITER_ID,	UPDATE_DATE,	UPWRITER_ID
+	    FROM BIZ_LIC
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</select>
+
+    <!-- ================================================================= -->
+    <!-- [4] SPC 기본정보 조회 (단건)                                            -->
+    <!-- ================================================================= -->
+
+	<select id="selectSPC" parameterType="HashMap" resultType="CamelHashMap">
+	    SELECT
+	        TITLE,			TO_CHAR(EFFECTIVE_DATE, 'YYYY-MM-DD') AS EFFECTIVE_DATE,
+	        AFTER_TASK,		MIKEP_DOC_NO,	REGI_DATE,	INWRITER_ID,	UPDATE_DATE,	UPWRITER_ID
+	    FROM BIZ_SPC
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</select>
+
+    <!-- ================================================================= -->
+    <!-- [5] 주민상생 기본정보 조회 (단건)                                        -->
+    <!-- ================================================================= -->
+
+	<select id="selectCSV" parameterType="HashMap" resultType="CamelHashMap">
+	    SELECT
+	        TITLE,			TO_CHAR(EFFECTIVE_DATE, 'YYYY-MM-DD') AS EFFECTIVE_DATE,
+	        AFTER_TASK,		MIKEP_DOC_NO,	REGI_DATE,	INWRITER_ID,	UPDATE_DATE,	UPWRITER_ID
+	    FROM BIZ_CSV
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</select>
+
+    <!-- ================================================================= -->
+    <!-- [6] 용역 기본정보 저장/수정                                             -->
+    <!-- ================================================================= -->
+
+	<update id="mergeSVC" parameterType="HashMap">
+	    MERGE INTO BIZ_SVC T
+	    USING DUAL
+	    ON (    T.MASTER_NO = #{masterNo}
+	        AND T.TASK_TYPE = #{taskType}
+	        AND T.TASK_CODE = #{taskCode}
+	    )
+	    WHEN MATCHED THEN
+	        UPDATE SET
+	            MIKEP_DOC_NO = #{mikepDocNo},
+	            SVC_DAYS     = #{svcDays},
+	            CON_MTH      = #{conMth},
+	            EVALUATION   = #{evaluation},
+	            EVC_TEC      = #{evcTec},
+	            EVC_PRC      = #{evcPrc},
+	            BID_TND_NO   = #{bidTndNo},
+	            PQ_NO        = #{pqNo},
+	            ELG_NO       = #{elgNo},
+	            CON_NO       = #{conNo},
+	            AFTER_TASK   = #{afterTask},
+	            RELATED_LIC  = #{relatedLic},
+	            UPDATE_DATE  = SYSDATE,
+	            UPWRITER_ID  = #{upwriterId}
+	    WHEN NOT MATCHED THEN
+	        INSERT (MASTER_NO, TASK_TYPE, TASK_CODE, SVC_NAME,
+	                MIKEP_DOC_NO, SVC_DAYS, CON_MTH, EVALUATION,
+	                EVC_TEC, EVC_PRC, BID_TND_NO, PQ_NO, ELG_NO, CON_NO,
+	                AFTER_TASK, RELATED_LIC,
+	                REGI_DATE, INWRITER_ID)
+	        VALUES (#{masterNo}, #{taskType}, #{taskCode}, #{taskName},
+	                #{mikepDocNo}, #{svcDays}, #{conMth}, #{evaluation},
+	                #{evcTec}, #{evcPrc}, #{bidTndNo}, #{pqNo}, #{elgNo}, #{conNo},
+	                #{afterTask}, #{relatedLic},
+	                SYSDATE, #{inwriterId})
+	</update>
+
+    <!-- ================================================================= -->
+    <!-- [7] 인허가 기본정보 저장/수정                                            -->
+    <!-- ================================================================= -->
+
+	<update id="mergeLIC" parameterType="HashMap">
+	    MERGE INTO BIZ_LIC T
+	    USING DUAL
+	    ON (    T.MASTER_NO = #{masterNo}
+	        AND T.TASK_TYPE = #{taskType}
+	        AND T.TASK_CODE = #{taskCode}
+	    )
+	    WHEN MATCHED THEN
+	        UPDATE SET
+	            LIC_ORG      = #{licOrg},
+	            MIKEP_DOC_NO = #{mikepDocNo},
+	            LIC_DATE     = #{licDate},
+	            PIC_NAME     = #{picName},
+	            PIC_POS      = #{picPos},
+	            PIC_TEL      = #{picTel},
+	            PIC_EMAIL    = #{picEmail},
+	            AFTER_TASK   = #{afterTask},
+	            UPDATE_DATE  = SYSDATE,
+	            UPWRITER_ID  = #{upwriterId}
+	    WHEN NOT MATCHED THEN
+	        INSERT (MASTER_NO, TASK_TYPE, TASK_CODE, LIC_NAME,
+	                LIC_ORG, MIKEP_DOC_NO, LIC_DATE,
+	                PIC_NAME, PIC_POS, PIC_TEL, PIC_EMAIL,
+	                AFTER_TASK,
+	                REGI_DATE, INWRITER_ID)
+	        VALUES (#{masterNo}, #{taskType}, #{taskCode}, #{taskName},
+	                #{licOrg}, #{mikepDocNo}, #{licDate},
+	                #{picName}, #{picPos}, #{picTel}, #{picEmail},
+	                #{afterTask},
+	                SYSDATE, #{inwriterId})
+	</update>
+
+    <!-- ================================================================= -->
+    <!-- [8] SPC 기본정보 저장/수정                                             -->
+    <!-- ================================================================= -->
+
+	<update id="mergeSPC" parameterType="HashMap">
+	    MERGE INTO BIZ_SPC T
+	    USING DUAL
+	    ON (    T.MASTER_NO = #{masterNo}
+	        AND T.TASK_TYPE = #{taskType}
+	        AND T.TASK_CODE = #{taskCode}
+	    )
+	    WHEN MATCHED THEN
+	        UPDATE SET
+	            EFFECTIVE_DATE = #{effectiveDate},
+	            AFTER_TASK     = #{afterTask},
+	            MIKEP_DOC_NO   = #{mikepDocNo},
+	            UPDATE_DATE    = SYSDATE,
+	            UPWRITER_ID    = #{upwriterId}
+	    WHEN NOT MATCHED THEN
+	        INSERT (MASTER_NO, TASK_TYPE, TASK_CODE, TITLE,
+	                EFFECTIVE_DATE, AFTER_TASK, MIKEP_DOC_NO,
+	                REGI_DATE, INWRITER_ID)
+	        VALUES (#{masterNo}, #{taskType}, #{taskCode}, #{taskName},
+	                #{effectiveDate}, #{afterTask}, #{mikepDocNo},
+	                SYSDATE, #{inwriterId})
+	</update>
+
+    <!-- ================================================================= -->
+    <!-- [9] 주민상생 기본정보 저장/수정                                          -->
+    <!-- ================================================================= -->
+
+	<update id="mergeCSV" parameterType="HashMap">
+	    MERGE INTO BIZ_CSV T
+	    USING DUAL
+	    ON (    T.MASTER_NO = #{masterNo}
+	        AND T.TASK_TYPE = #{taskType}
+	        AND T.TASK_CODE = #{taskCode}
+	    )
+	    WHEN MATCHED THEN
+	        UPDATE SET
+	            EFFECTIVE_DATE = #{effectiveDate},
+	            AFTER_TASK     = #{afterTask},
+	            MIKEP_DOC_NO   = #{mikepDocNo},
+	            UPDATE_DATE    = SYSDATE,
+	            UPWRITER_ID    = #{upwriterId}
+	    WHEN NOT MATCHED THEN
+	        INSERT (MASTER_NO, TASK_TYPE, TASK_CODE, TITLE,
+	                EFFECTIVE_DATE, AFTER_TASK, MIKEP_DOC_NO,
+	                REGI_DATE, INWRITER_ID)
+	        VALUES (#{masterNo}, #{taskType}, #{taskCode}, #{taskName},
+	                #{effectiveDate}, #{afterTask}, #{mikepDocNo},
+	                SYSDATE, #{inwriterId})
+	</update>
+
+    <!-- ================================================================= -->
+    <!-- [10] 용역 계약체결 저장/수정                                            -->
+    <!-- ================================================================= -->
+
+	<update id="mergeSVCCON" parameterType="HashMap">
+	    MERGE INTO BIZ_SVC_CON T
+	    USING DUAL
+	    ON (    T.MASTER_NO = #{masterNo}
+	        AND T.TASK_TYPE = #{taskType}
+	        AND T.TASK_CODE = #{taskCode}
+	        AND T.ORDER_NO  = #{orderNo}
+	    )
+	    WHEN MATCHED THEN
+	        UPDATE SET
+	            MIKEP_DOC_NO = #{mikepDocNo},
+	            CONTRACTOR   = #{contractor},
+	            CON_AMT      = #{conAmt},
+	            SVC_START    = #{svcStart},
+	            SVC_END      = #{svcEnd},
+	            CON_NO       = #{conNo},
+	            UPDATE_DATE  = SYSDATE,
+	            UPWRITER_ID  = #{upwriterId}
+	    WHEN NOT MATCHED THEN
+	        INSERT (MASTER_NO, TASK_TYPE, TASK_CODE, ORDER_NO,
+	                MIKEP_DOC_NO, CONTRACTOR, CON_AMT, SVC_START, SVC_END, CON_NO,
+	                REGI_DATE, INWRITER_ID)
+	        VALUES (#{masterNo}, #{taskType}, #{taskCode}, #{orderNo},
+	                #{mikepDocNo}, #{contractor}, #{conAmt}, #{svcStart}, #{svcEnd}, #{conNo},
+	                SYSDATE, #{inwriterId})
+	</update>
+
+    <!-- ================================================================= -->
+    <!-- [11] 용역 계약체결 삭제 (현재 목록에 없는 행)                              -->
+    <!-- ================================================================= -->
+
+	<delete id="deleteSVCCONExcept" parameterType="HashMap">
+	    DELETE FROM BIZ_SVC_CON
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	      AND ORDER_NO NOT IN
+	    <foreach collection="orderNos" item="no" open="(" separator="," close=")">
+	        #{no}
+	    </foreach>
+	</delete>
+
+    <!-- ================================================================= -->
+    <!-- [12] 자식 task 삭제 (BIZ_PORTAL 단건 / 데이터 테이블 / BIZ_TASK)         -->
+    <!-- ================================================================= -->
+
+	<delete id="deleteBizPortalTask" parameterType="HashMap">
+	    DELETE FROM BIZ_PORTAL
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</delete>
+
+	<delete id="deleteSVC" parameterType="HashMap">
+	    DELETE FROM BIZ_SVC
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</delete>
+
+	<delete id="deleteSVCCON" parameterType="HashMap">
+	    DELETE FROM BIZ_SVC_CON
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</delete>
+
+	<delete id="deleteLIC" parameterType="HashMap">
+	    DELETE FROM BIZ_LIC
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</delete>
+
+	<delete id="deleteSPC" parameterType="HashMap">
+	    DELETE FROM BIZ_SPC
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</delete>
+
+	<delete id="deleteCSV" parameterType="HashMap">
+	    DELETE FROM BIZ_CSV
+	    WHERE MASTER_NO = #{masterNo}
+	      AND TASK_TYPE = #{taskType}
+	      AND TASK_CODE = #{taskCode}
+	</delete>
+
+</mapper>

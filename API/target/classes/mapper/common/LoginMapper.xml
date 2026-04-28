@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+				   
+<mapper namespace="com.koen.kopms_api.common.login.dao.LoginDao">
+	    
+    <!-- 사용자 정보 -->
+    <!-- USER_GUBUN : O - 외부평가위원, I - 내부평가위원, A - 시스템관리자, V - 업무관리자, E - 본사평가위원(사업검토회의), H - 업무지원 -->
+    <!-- INTELNO, EXFAXNO, EXTELNO : 암호화자료, 인코딩 요건 존재  -->
+    <select id="selectMember" parameterType="HashMap" resultType="CamelHashMap">
+	    SELECT e.EMPNO		, e.LEVELNO		, e.CLASSNO		, e.MAILNO		, e.NAME
+			 , e.INTELNO	, e.HOSTNAME	, e.NOTREMOVE	, e.EMP_ORDER	, e.DOWNLOAD
+			 , e.LEVELDATE	, e.TITLE		, e.EXIST		, e.IPADDR		, e.M_COUNT
+			 , e.EXFAXNO	, e.MOBILE_PHN	, e.JIKGUB_NAME	, e.VPN_YN		, e.USER_GUBUN
+			 , e.DEPTNO		, e.EXTELNO
+			 , d.DEPT_NAME 
+		  FROM EMPLOYEE e 
+		 INNER JOIN DEPT d 
+		    ON e.DEPTNO = d.DEPTNO
+		 WHERE e.EMPNO = #{empno}
+    </select>
+    
+    <!-- 메뉴 정보 -->
+    <!-- 시스템관리자[A] 제외한 사용자 - MENU_CODE != 'SM' -->
+    <select id="selectMenus" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT LEVEL, MENU_NAME
+		     , MENU_CODE, MENU_NO, UP_MENU_NO, MENU_URL, COMPONENT     
+		     , LTRIM(SYS_CONNECT_BY_PATH(MENU_NAME, ' > '), ' > ') AS MENU_PATH
+		     , CONNECT_BY_ISLEAF AS IS_LEAF
+		     , MENU_IMAGE
+		     , MENU_CODE || MENU_NO AS MENU_CODE_NO
+		     , TOP_NO, TOP_MENU_LIST, USE_YN
+		  FROM MENU_LIST
+		 WHERE 1 = 1
+		   AND USE_YN = 'Y'
+		 <choose>
+	   	 <when test='userType == null or userType == ""'>
+	   	 	<!-- 조건 안 붙임 -->
+		 </when>
+		 <otherwise>
+		   AND MENU_CODE != 'SM'
+		 </otherwise>
+		 </choose>
+		 START WITH UP_MENU_NO IS NULL
+	   CONNECT BY PRIOR MENU_NO = UP_MENU_NO
+		 ORDER SIBLINGS BY MENU_NO
+    </select>
+    
+    <!-- 메뉴 권한 정보 : A-시스템관리자, H-업무지원 [MENU_LIST] , 기타 [MENU_AUTH] -->
+    <select id="selectMenuAuth" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT MENU_CODE, MENU_NO
+	      FROM
+	    <choose>
+	        <when test="userType != null and userType != ''">
+	           MENU_AUTH
+	        </when>
+	        <otherwise>
+	           MENU_LIST
+	        </otherwise>
+	    </choose>
+	     WHERE 1 = 1
+	       AND USE_YN = 'Y'
+	    <if test="userType != null and userType != ''">
+	       AND DEPTNO = #{deptno}
+	    </if>
+    </select>
+    
+    <!-- 로그인 이력 저장 -->
+    <insert id="insertUserLog" parameterType="HashMap">
+		INSERT INTO LOGINHISTORY
+			   (EMP_ID, EMP_NAME, LOGIN_DATE, IPADDR)
+		VALUES (#{empId}, #{empName}, SYSDATE, #{ipaddr})
+	</insert>
+	
+	<!-- 로그인 이력 저장2 -->
+	<insert id="upsertLoginHistory" parameterType="HashMap">
+		MERGE INTO LOGINHISTORY t
+		USING (
+		  SELECT
+		    #{empId}   AS EMP_ID,
+		    #{empName} AS EMP_NAME,
+		    #{ipaddr}  AS IPADDR
+		  FROM dual
+		) s
+		ON (t.EMP_ID = s.EMP_ID)
+		WHEN MATCHED THEN
+		  UPDATE SET
+		    t.EMP_NAME   = s.EMP_NAME,
+		    t.IPADDR     = s.IPADDR,
+		    t.LOGIN_DATE = SYSDATE
+		WHEN NOT MATCHED THEN
+		  INSERT (EMP_ID, EMP_NAME, LOGIN_DATE, IPADDR)
+		  VALUES (s.EMP_ID, s.EMP_NAME, SYSDATE, s.IPADDR)
+	</insert>
+	
+	<!-- 메뉴로그 이력 저장 -->
+	<insert id="upsertLogMenu" parameterType="HashMap">
+		MERGE INTO MENU_COUNT t
+		USING ( SELECT TO_CHAR(#{menuNo}) AS MENU_NO FROM DUAL ) s
+		   ON ( t.MENU_CODE = s.MENU_NO AND t.REG_DT = TO_CHAR(SYSDATE, 'YYYYMMDD') )
+		 WHEN MATCHED THEN
+		      UPDATE SET t.MENU_COUNT = NVL(t.MENU_COUNT, 0) + 1
+		 WHEN NOT MATCHED THEN
+		      INSERT (MENU_CODE, REG_DT, MENU_COUNT)
+		      VALUES (s.MENU_NO, TO_CHAR(SYSDATE, 'YYYYMMDD'), 1)
+	</insert>
+	
+	<insert id="upsertLogMenu_old" parameterType="HashMap">
+		MERGE INTO MENU_COUNT t
+		USING (
+				SELECT MENU_NO
+			    FROM (
+			        SELECT ml.MENU_NO
+			          FROM MENU_LIST ml
+			         WHERE ml.MENU_URL = #{menuUrl}
+			         ORDER BY ml.MENU_NO
+			    )
+			    WHERE ROWNUM = 1
+			) s
+		ON (
+		       t.MENU_CODE = s.MENU_NO
+		   AND t.REG_DT    = TO_CHAR(SYSDATE, 'YYYYMMDD')
+		)
+		WHEN MATCHED THEN
+		    UPDATE SET
+		           t.MENU_COUNT = t.MENU_COUNT + 1
+		WHEN NOT MATCHED THEN
+		    INSERT (MENU_CODE, REG_DT, MENU_COUNT)
+		    VALUES (s.MENU_NO, TO_CHAR(SYSDATE, 'YYYYMMDD'), 1)
+	</insert>
+	
+	<!-- 로그인 이력 조회 페이징 -->
+    <select id="selectLoginHistory" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT ROWNUM AS NO
+			 , EMP_ID, EMP_NAME, IPADDR
+	 		 , TO_CHAR(LOGIN_DATE, 'YYYY-MM-DD HH24:MI:SS') AS LOGIN_DATE
+		     , MAX_CNT
+		     , CEIL(MAX_CNT / #{pagePerRow} ) AS TOTAL_PAGE
+		FROM (
+		     SELECT EMP_ID, EMP_NAME, LOGIN_DATE, IPADDR 
+		     	  , COUNT(*) OVER() AS MAX_CNT
+		       FROM LOGINHISTORY
+		      WHERE 1 = 1
+		      --AND EMP_ID IS NULL  -- 테스트
+		      ORDER BY LOGIN_DATE DESC
+			)
+	   OFFSET (#{pageNum} - 1) * #{pagePerRow} ROWS
+		FETCH NEXT #{pagePerRow} ROWS ONLY        
+    </select>
+    
+    <!-- 메뉴저장  Test  -->
+    <insert id="insertMenu" parameterType="HashMap">
+		INSERT INTO MENU_LIST
+			   ( MENU_CODE	, MENU_NO		, MENU_NAME		, MENU_LEVEL	, UP_MENU_NO
+			   , MENU_URL	, MENU_IMAGE	, USE_YN		, TOP_MENU_LIST	, TOP_NO)
+		VALUES (#{menuCode}	, #{menuNo}		, #{menuName}	, #{menuLevel}	, #{upMenuNo}
+			   ,#{menuUrl}	, #{menuImage}	, #{useYn}		, #{topMenuList}, #{topNo})
+	</insert>
+	
+	<!-- 메뉴저장 Test -->
+	<insert id="upsertMenu" parameterType="HashMap">
+	    MERGE INTO MENU_LIST t
+	    USING (
+	        SELECT
+	            #{menuCode}  AS MENU_CODE,
+	            #{menuNo}    AS MENU_NO,
+	            #{menuName}  AS MENU_NAME,
+	            #{menuLevel} AS MENU_LEVEL,
+	            #{upMenuNo}  AS UP_MENU_NO,
+	            #{menuUrl}   AS MENU_URL,
+	            #{menuImage} AS MENU_IMAGE,
+	            #{useYn}     AS USE_YN,
+	            #{topMenuList} AS TOP_MENU_LIST,
+	            #{topNo}     AS TOP_NO
+	        FROM DUAL
+	    ) s
+	    ON (
+	           t.MENU_CODE = s.MENU_CODE
+	       AND t.MENU_NO   = s.MENU_NO
+	    )
+	    WHEN MATCHED THEN
+	        UPDATE SET
+	              t.MENU_NAME	= s.MENU_NAME
+	            , t.MENU_LEVEL 	= s.MENU_LEVEL
+	            , t.UP_MENU_NO 	= s.UP_MENU_NO
+	            , t.MENU_URL  	= s.MENU_URL
+	            , t.MENU_IMAGE 	= s.MENU_IMAGE
+	            , t.USE_YN  	= s.USE_YN
+	            , t.TOP_MENU_LIST= s.TOP_MENU_LIST
+	            , t.TOP_NO  	= s.TOP_NO
+	    WHEN NOT MATCHED THEN
+	        INSERT (
+	        	 MENU_CODE	, MENU_NO	, MENU_NAME	, MENU_LEVEL	, UP_MENU_NO
+	           , MENU_URL	, MENU_IMAGE, USE_YN	, TOP_MENU_LIST	, TOP_NO
+	        )
+	        VALUES (
+	             s.MENU_CODE, s.MENU_NO		, s.MENU_NAME	, s.MENU_LEVEL		, s.UP_MENU_NO
+	           , s.MENU_URL	, s.MENU_IMAGE	, s.USE_YN		, s.TOP_MENU_LIST	, s.TOP_NO	            
+	        )
+	</insert>
+	
+	<!-- 메뉴 리스트 -->
+    <select id="selectMenuList" parameterType="HashMap" resultType="CamelHashMap">
+        SELECT MENU_CODE, MENU_NO, MENU_NAME, MENU_LEVEL, UP_MENU_NO, MENU_URL, MENU_IMAGE, USE_YN, TOP_MENU_LIST, TOP_NO
+		  FROM MENU_LIST
+		 WHERE 1 = 1
+		   AND USE_YN = 'Y'
+		 ORDER BY MENU_CODE, MENU_NO
+    </select>
+    
+</mapper>
